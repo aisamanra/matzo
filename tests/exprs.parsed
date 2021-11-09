@@ -101,4 +101,30 @@
             ],
         ),
     ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Ap(
+                                Ap(
+                                    Var(
+                                        "foo",
+                                    ),
+                                    Var(
+                                        "bar",
+                                    ),
+                                ),
+                                Var(
+                                    "baz",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
 ]
