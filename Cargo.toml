@@ -24,6 +24,7 @@ rand = "*"
 lalrpop-util = { version = "*", features = ["lexer"] }
 logos = "*"
 rustyline = "*"
+ansi_term = "*"
 
 [build-dependencies.lalrpop]
 version = "*"

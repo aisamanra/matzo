@@ -337,6 +337,7 @@ dependencies = [
 name = "matzo"
 version = "0.1.0"
 dependencies = [
+ "ansi_term",
  "lalrpop",
  "lalrpop-util",
  "logos",

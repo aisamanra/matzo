@@ -17,8 +17,14 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     let mut rl = rustyline::Editor::<()>::new();
     let mut state = State::new();
     let parser = StmtsParser::new();
-    println!("matzo interpreter");
-    println!("(work-in-progress)");
+    println!(
+        "{}",
+        ansi_term::Colour::Blue.bold().paint("matzo interpreter"),
+    );
+    println!(
+        "{}",
+        ansi_term::Colour::Blue.paint("(work-in-progress)"),
+    );
 
     loop {
         let line = match rl.readline(">>> ") {
@@ -33,13 +39,34 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         let stmts = match parser.parse(lexed) {
             Ok(stmts) => stmts,
             Err(err) => {
-                eprintln!("{:?}", err);
-                continue;
+                // for the REPL specifically, let's try adding a
+                // `puts` to see if that works
+                let added_puts = format!("puts {}", line);
+                let lexed = tokens(&added_puts);
+                match parser.parse(lexed) {
+                    Ok(stmts) => stmts,
+                    Err(_) => {
+                        // that didn't fix it, so report the
+                        // _original_ parse error, not the new one
+                        eprintln!(
+                            "{}",
+                            ansi_term::Colour::Red.paint(
+                                format!("{:?}", err)
+                            ),
+                        );
+                        continue;
+                    }
+                }
             }
         };
+
         for stmt in stmts {
             if let Err(err) = state.execute(&stmt) {
-                eprintln!("error: {}", err);
+                eprintln!(
+                    "{} {}",
+                    ansi_term::Colour::Red.bold().paint("error:"),
+                    ansi_term::Colour::Red.paint(format!("{}", err)),
+                );
             }
         }
     }
