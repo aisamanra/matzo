@@ -7,3 +7,17 @@ puts 5: This | That;
 
 (* application *)
 puts foo.bar.baz;
+
+
+(* tuples *)
+puts <>;
+puts <1>;
+puts <1,2>;
+puts <1,2,3>;
+
+(* ranges *)
+puts 0..20;
+puts x..y;
+
+(* application *)
+puts f.x;

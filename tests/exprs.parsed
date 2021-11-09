@@ -127,4 +127,245 @@
             ],
         ),
     ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Tup(
+                                [
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Tup(
+                                [
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                1,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Tup(
+                                [
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                1,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                2,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Tup(
+                                [
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                1,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                2,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                    Chc(
+                                        [
+                                            Choice {
+                                                weight: None,
+                                                value: Cat(
+                                                    [
+                                                        Lit(
+                                                            Num(
+                                                                3,
+                                                            ),
+                                                        ),
+                                                    ],
+                                                ),
+                                            },
+                                        ],
+                                    ),
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Range(
+                                Lit(
+                                    Num(
+                                        0,
+                                    ),
+                                ),
+                                Lit(
+                                    Num(
+                                        20,
+                                    ),
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Range(
+                                Var(
+                                    "x",
+                                ),
+                                Var(
+                                    "y",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Ap(
+                                Var(
+                                    "f",
+                                ),
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
 ]
