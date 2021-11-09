@@ -3,11 +3,51 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::fmt;
 
+macro_rules! bail {
+    ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
+    ($fmt:expr, $($e:expr),*) => { return Err(Error { message: format!($fmt, $($e),*), }) }
+}
+
 #[derive(Debug)]
 pub enum Value {
     Lit(Literal),
     Tup(Vec<Value>),
     Builtin(&'static BuiltinFunc),
+}
+
+impl Value {
+    fn as_num(&self) -> Result<i64, Error> {
+        match self {
+            Value::Lit(Literal::Num(n)) => Ok(*n),
+            _ => self.with_str(|s| bail!("Expected number, got {}", s)),
+        }
+    }
+
+    fn with_str<U>(&self, f: impl Fn(&str) -> U) -> U {
+        match self {
+            Value::Lit(Literal::Str(s)) => f(&s),
+            Value::Lit(Literal::Atom(s)) => f(&s),
+            Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
+            Value::Tup(values) => {
+                let mut buf = String::new();
+                buf.push_str("<");
+                for (i, val) in values.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(", ");
+                    }
+                    buf.push_str(&val.to_string());
+                }
+                buf.push_str(">");
+                f(&buf)
+            }
+            Value::Builtin(func) =>
+                f(&format!("#<builtin {}>", func.name)),
+        }
+    }
+
+    fn to_string(&self) -> String {
+        self.with_str(|s| s.to_string())
+    }
 }
 
 pub struct BuiltinFunc {
@@ -27,11 +67,6 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
-
-macro_rules! bail {
-    ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
-    ($fmt:expr, $($e:expr),*) => { return Err(Error { message: format!($fmt, $($e),*), }) }
-}
 
 const BUILTINS: &[BuiltinFunc] = &[
     BuiltinFunc {
@@ -58,30 +93,6 @@ const BUILTINS: &[BuiltinFunc] = &[
 impl fmt::Debug for BuiltinFunc {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         writeln!(fmt, "BuiltinFunc {{ name: {:?}, ... }}", self.name)
-    }
-}
-
-impl Value {
-    fn to_string(&self) -> String {
-        match self {
-            Value::Lit(Literal::Str(s)) => s.clone(),
-            Value::Lit(Literal::Atom(s)) => s.clone(),
-            Value::Lit(Literal::Num(n)) => format!("{}", n),
-            Value::Tup(values) => {
-                let mut buf = String::new();
-                buf.push_str("<");
-                for (i, val) in values.iter().enumerate() {
-                    if i > 0 {
-                        buf.push_str(", ");
-                    }
-                    buf.push_str(&val.to_string());
-                }
-                buf.push_str(">");
-                buf
-            }
-            Value::Builtin(func) =>
-                format!("#<builtin {}>", func.name),
-        }
     }
 }
 
@@ -172,14 +183,8 @@ impl State {
                 }
             }
             Expr::Range(from, to) => {
-                let from = match self.eval(from)? {
-                    Value::Lit(Literal::Num(n)) => n,
-                    e => bail!("bad start in range: {}", e.to_string()),
-                };
-                let to = match self.eval(to)? {
-                    Value::Lit(Literal::Num(n)) => n,
-                    e => bail!("bad end in range: {}", e.to_string()),
-                };
+                let from = self.eval(from)?.as_num()?;
+                let to = self.eval(to)?.as_num()?;
                 Ok(Value::Lit(Literal::Num(self.rand.gen_range(from..=to))))
             }
             _ => bail!("unimplemented: {:?}", expr),
