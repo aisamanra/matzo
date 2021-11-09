@@ -4,3 +4,6 @@ puts This That The-Other;
 puts This | That | The-Other;
 (* weighted choice *)
 puts 5: This | That;
+
+(* application *)
+puts foo.bar.baz;

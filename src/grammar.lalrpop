@@ -13,6 +13,7 @@ match {
     ":",
     ",",
     ";",
+    ".",
     ":=",
     "::=",
     "puts",
@@ -67,7 +68,12 @@ pub Choice: Choice = {
 };
 
 pub Term: Expr = {
-    (<Leaf>)* => Expr::Cat(<>),
+    (<Branch>)* => Expr::Cat(<>),
+};
+
+pub Branch: Expr = {
+    <l:Branch> "." <r:Leaf> => Expr::Ap(Box::new(l), Box::new(r)),
+    <Leaf> => <>,
 };
 
 pub Leaf: Expr = {

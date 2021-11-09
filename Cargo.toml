@@ -20,6 +20,7 @@ path = "tools/regenerate.rs"
 
 [dependencies]
 regex = "1"
+rand = "*"
 lalrpop-util = { version = "*", features = ["lexer"] }
 
 [build-dependencies.lalrpop]

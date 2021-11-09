@@ -2,6 +2,7 @@
 extern crate lalrpop_util;
 
 pub mod ast;
+pub mod interp;
 
 #[cfg(test)]
 pub mod test {

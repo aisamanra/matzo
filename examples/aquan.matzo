@@ -1,0 +1,15 @@
+(* Below is a literal assignment, which is
+ * identical to cons := "p"| "t" | "k" | "w" | "h" | "n"; *)
+(* cons ::= p t k w h n; *)
+cons := 'p'| 't' | 'k' | 'w' | 'h' | 'n';
+
+(* And this could also be done with two rules and a literal
+ * assignment *)
+vowel := ('a' | 'e' | 'i' | 'o' | 'u') (4: '' | '\'');
+
+(* Here is a weighted disjunction *)
+syll := 4: cons vowel | vowel;
+
+(* And finally, here's an output statement *)
+(* puts syll (6 @ syll); *)
+puts syll syll syll syll;

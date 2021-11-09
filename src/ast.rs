@@ -1,6 +1,6 @@
 type Name = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     Puts(Expr),
     Fix(Name),
@@ -8,7 +8,7 @@ pub enum Stmt {
     LitAssn(Name, Vec<String>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Var(Name),
     Cat(Vec<Expr>),
@@ -22,26 +22,32 @@ pub enum Expr {
     Case(Box<Expr>, Vec<Case>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Case {
     pub pat: Pat,
     pub expr: Expr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Pat {
     Var(Name),
     Lit(Literal),
     Tup(Vec<Pat>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Choice {
     pub weight: Option<i64>,
     pub value: Expr,
 }
 
-#[derive(Debug)]
+impl Choice {
+    pub fn weight(&self) -> i64 {
+        self.weight.unwrap_or(1)
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Literal {
     Str(String),
     Atom(String),
