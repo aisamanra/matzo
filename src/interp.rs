@@ -1,6 +1,6 @@
 use crate::ast::*;
-use std::collections::HashMap;
 use rand::Rng;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Value {

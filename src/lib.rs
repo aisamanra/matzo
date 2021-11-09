@@ -9,5 +9,4 @@ pub mod test {
     include!(concat!(env!("OUT_DIR"), "/exp_tests.rs"));
 }
 
-
 lalrpop_mod!(#[allow(clippy::all)] pub grammar);
