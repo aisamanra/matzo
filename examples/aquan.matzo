@@ -4,7 +4,7 @@ cons ::= p t k w h n;
 
 (* And this could also be done with two rules and a literal
  * assignment *)
-vowel := ('a' | 'e' | 'i' | 'o' | 'u') (4: '' | '\'');
+vowel := ("a" | "e" | "i" | "o" | "u") (4: "" | "'");
 
 (* Here is a weighted disjunction *)
 syll := 4: cons vowel | vowel;
