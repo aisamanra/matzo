@@ -151,6 +151,21 @@ impl State {
         s
     }
 
+    pub fn autocomplete(&self, fragment: &str, at_beginning: bool) -> Vec<String> {
+        let mut possibilities = Vec::new();
+        for name in self.scope.keys() {
+            if name.starts_with(fragment) {
+                possibilities.push(name.clone());
+            }
+        }
+        if at_beginning {
+            if "puts".starts_with(fragment) {
+                possibilities.push("puts ".to_owned());
+            }
+        }
+        possibilities
+    }
+
     pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Error> {
         Ok(match stmt {
             Stmt::Puts(expr) => {

@@ -14,8 +14,9 @@ fn run(src: &str) {
 }
 
 fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
-    let mut rl = rustyline::Editor::<()>::new();
-    let mut state = State::new();
+    let mut rl = rustyline::Editor::<matzo::repl::Repl>::new();
+    let state = std::rc::Rc::new(std::cell::RefCell::new(State::new()));
+    rl.set_helper(Some(matzo::repl::Repl::new(state.clone())));
     let parser = StmtsParser::new();
     println!(
         "{}",
@@ -61,7 +62,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         };
 
         for stmt in stmts {
-            if let Err(err) = state.execute(&stmt) {
+            if let Err(err) = state.borrow_mut().execute(&stmt) {
                 eprintln!(
                     "{} {}",
                     ansi_term::Colour::Red.bold().paint("error:"),

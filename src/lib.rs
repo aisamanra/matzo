@@ -4,6 +4,7 @@ extern crate lalrpop_util;
 pub mod lexer;
 pub mod ast;
 pub mod interp;
+pub mod repl;
 
 #[cfg(test)]
 pub mod test {
