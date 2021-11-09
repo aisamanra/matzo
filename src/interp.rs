@@ -5,6 +5,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub enum Value {
     Lit(Literal),
+    Tup(Vec<Value>),
 }
 
 impl Value {
@@ -13,6 +14,18 @@ impl Value {
             Value::Lit(Literal::Str(s)) => s.clone(),
             Value::Lit(Literal::Atom(s)) => s.clone(),
             Value::Lit(Literal::Num(n)) => format!("{}", n),
+            Value::Tup(values) => {
+                let mut buf = String::new();
+                buf.push_str("<");
+                for (i, val) in values.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(", ");
+                    }
+                    buf.push_str(&val.to_string());
+                }
+                buf.push_str(">");
+                buf
+            }
         }
     }
 }
@@ -38,6 +51,13 @@ impl State {
             }
             Stmt::Assn(name, expr) => {
                 self.scope.insert(name.to_string(), expr.clone());
+            }
+            Stmt::LitAssn(name, strs) => {
+                let choices = strs.iter().map(|s| Choice {
+                    weight: None,
+                    value: Expr::Lit(Literal::Str(s.clone())),
+                }).collect();
+                self.scope.insert(name.to_string(), Expr::Chc(choices));
             }
             _ => panic!("unimplemented"),
         }
@@ -73,6 +93,8 @@ impl State {
                     self.choose(choices)
                 }
             }
+            Expr::Tup(values) =>
+                Value::Tup(values.iter().map(|v| self.eval(v)).collect()),
             _ => panic!("unimplemented: {:?}", expr),
         }
     }

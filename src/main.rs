@@ -23,6 +23,7 @@ fn run_repl() -> std::io::Result<()> {
         stdout.flush()?;
         buf.clear();
         stdin.read_line(&mut buf)?;
+
         let stmts = match parser.parse(&buf) {
             Ok(stmts) => stmts,
             Err(err) => {

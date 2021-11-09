@@ -20,8 +20,8 @@ match {
     "case",
     "let",
     "in",
-    r"[a-z][A-Za-z0-9_-]*",
-    r"[A-Z][A-Za-z0-9_-]*",
+    r"\p{Ll}(\pL|[0-9_-])*",
+    r"\p{Lu}(\pL|[0-9_-])*",
     r"[0-9]+",
     r"'([^'\\]|\\.)*'",
     r"\s*" => {},
@@ -43,10 +43,11 @@ pub Stmts: Vec<Stmt> = {
 pub Stmt: Stmt = {
     "puts" <Expr> => Stmt::Puts(<>),
     <Name> ":=" <Expr> => Stmt::Assn(<>),
+    <name:Name> "::=" <strs:(<Name>)*> => Stmt::LitAssn(name, strs),
 };
 
 pub Name: String = {
-    r"[a-z][A-Za-z0-9_-]*" => <>.to_owned(),
+    r"\p{Ll}(\pL|[0-9_-])*" => <>.to_owned(),
 };
 
 pub Expr: Expr = {
@@ -95,5 +96,5 @@ pub Num: i64 = {
 pub Literal: Literal = {
     <Num> => Literal::Num(<>),
     r"'([^'\\]|\\.)*'" => Literal::from_str_literal(<>),
-    r"[A-Z][A-Za-z0-9_-]*" => Literal::Atom(<>.to_owned()),
+    r"\p{Lu}(\pL|[0-9_-])*" => Literal::Atom(<>.to_owned()),
 };

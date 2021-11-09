@@ -1,7 +1,6 @@
 (* Below is a literal assignment, which is
  * identical to cons := "p"| "t" | "k" | "w" | "h" | "n"; *)
-(* cons ::= p t k w h n; *)
-cons := 'p'| 't' | 'k' | 'w' | 'h' | 'n';
+cons ::= p t k w h n;
 
 (* And this could also be done with two rules and a literal
  * assignment *)
