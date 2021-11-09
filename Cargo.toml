@@ -1,0 +1,30 @@
+[package]
+name = "matzo"
+version = "0.1.0"
+edition = "2021"
+default-run = "matzo"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "matzo"
+
+[[bin]]
+name = "matzo"
+path = "src/main.rs"
+
+[[bin]]
+name = "matzo-regenerate"
+test = true
+path = "tools/regenerate.rs"
+
+[dependencies]
+regex = "1"
+lalrpop-util = { version = "*", features = ["lexer"] }
+
+[build-dependencies.lalrpop]
+version = "*"
+features = ["lexer"]
+
+[dev-dependencies]
+pretty_assertions = "*"

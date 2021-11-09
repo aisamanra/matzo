@@ -1,0 +1,62 @@
+use std::str::FromStr;
+
+grammar;
+
+match {
+    "<",
+    ">",
+    "|",
+    ":",
+    ",",
+    ";",
+    ":=",
+    "::=",
+    "puts",
+    "case",
+    "let",
+    "in",
+    r"[a-z][A-Za-z0-9_-]*",
+    r"[A-Z][A-Za-z0-9_-]*",
+    r"[0-9]+",
+}
+
+use crate::ast::*;
+
+pub Stmts: Vec<Stmt> = {
+  <mut stmts:(<Stmt> ";")*> <stmt:Stmt?> => match stmt {
+    None => stmts,
+    Some(stmt) => {
+      stmts.push(stmt);
+      stmts
+    }
+  },
+};
+
+pub Stmt: Stmt = {
+  "puts" <Expr> => Stmt::Puts(<>),
+  <Name> ":=" <Expr> => Stmt::Assn(<>),
+};
+
+pub Name: String = {
+  r"[a-z][A-Za-z0-9_-]*" => <>.to_owned(),
+};
+
+pub Expr: Expr = {
+  <Literal> => Expr::Lit(<>),
+  <Name> => Expr::Var(<>),
+  "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
+    es.push(e);
+    Expr::Tup(es)
+  },
+  "let" <name:Name> ":=" <e1:Expr> "in" <e2:Expr> =>
+    Expr::Let(name, Box::new(e1), Box::new(e2)),
+};
+
+pub Num: i64 = {
+  r"[0-9]+" => i64::from_str(<>).unwrap(),
+};
+
+pub Literal: Literal = {
+  <Num> => Literal::Num(<>),
+  r"[A-Z][A-Za-z0-9_-]*" => Literal::Atom(<>.to_owned()),
+};
