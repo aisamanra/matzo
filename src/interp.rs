@@ -23,6 +23,13 @@ impl Value {
         }
     }
 
+    fn as_str(&self) -> Result<&str, Error> {
+        match self {
+            Value::Lit(Literal::Str(s)) => Ok(s),
+            _ => self.with_str(|s| bail!("Expected string, got {}", s)),
+        }
+    }
+
     fn with_str<U>(&self, f: impl Fn(&str) -> U) -> U {
         match self {
             Value::Lit(Literal::Str(s)) => f(&s),
@@ -79,13 +86,36 @@ const BUILTINS: &[BuiltinFunc] = &[
             if args.len() != 2 {
                 bail!("`rep`: expected two arguments, got {}", args.len())
             }
-            let num = match state.eval(&args[0])? {
-                Value::Lit(Literal::Num(n)) => n,
-                r => bail!("`rep`: expected first arg to be a number, but got {:?}", r),
-            };
-
+            let num = state.eval(&args[0])?.as_num()?;
             let rep = (0..num).map(|_| args[1].clone()).collect();
             state.eval(&Expr::Cat(rep))
+        }
+    },
+
+    BuiltinFunc {
+        name: "length",
+        callback: &|_state: &mut State, expr: &Expr| -> Result<Value, Error> {
+            let args = match expr {
+                Expr::Tup(tup) => tup,
+                _ => bail!("`length`: expected tuple"),
+            };
+            Ok(Value::Lit(Literal::Num(args.len() as i64)))
+        }
+    },
+
+    BuiltinFunc {
+        name: "to-upper",
+        callback: &|state: &mut State, expr: &Expr| -> Result<Value, Error> {
+            let s = state.eval(expr)?;
+            Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
+        }
+    },
+
+    BuiltinFunc {
+        name: "to-lower",
+        callback: &|state: &mut State, expr: &Expr| -> Result<Value, Error> {
+            let s = state.eval(expr)?;
+            Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         }
     },
 ];
