@@ -7,7 +7,9 @@ fn run(src: &str) {
     let stmts = StmtsParser::new().parse(&src).unwrap();
     let mut state = State::new();
     for stmt in stmts {
-        state.execute(&stmt);
+        if let Err(err) = state.execute(&stmt) {
+            eprintln!("error: {}", err);
+        }
     }
 }
 
@@ -32,7 +34,9 @@ fn run_repl() -> std::io::Result<()> {
             }
         };
         for stmt in stmts {
-            state.execute(&stmt);
+            if let Err(err) = state.execute(&stmt) {
+                eprintln!("error: {}", err);
+            }
         }
     }
 }

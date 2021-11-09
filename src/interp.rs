@@ -12,23 +12,41 @@ pub enum Value {
 
 pub struct BuiltinFunc {
     name: &'static str,
-    callback: &'static dyn Fn(&mut State, &Expr) -> Value,
+    callback: &'static dyn Fn(&mut State, &Expr) -> Result<Value, Error>,
+}
+
+#[derive(Debug)]
+pub struct Error {
+    message: String,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "{}", self.message)
+    }
+}
+
+impl std::error::Error for Error {}
+
+macro_rules! bail {
+    ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
+    ($fmt:expr, $($e:expr),*) => { return Err(Error { message: format!($fmt, $($e),*), }) }
 }
 
 const BUILTINS: &[BuiltinFunc] = &[
     BuiltinFunc {
         name: "rep",
-        callback: &|state: &mut State, expr: &Expr| -> Value {
+        callback: &|state: &mut State, expr: &Expr| -> Result<Value, Error> {
             let args = match expr {
                 Expr::Tup(tup) => tup,
-                _ => panic!("`rep`: expected tuple"),
+                _ => bail!("`rep`: expected tuple"),
             };
             if args.len() != 2 {
-                panic!("`rep`: expected two arguments, got {}", args.len())
+                bail!("`rep`: expected two arguments, got {}", args.len())
             }
-            let num = match state.eval(&args[0]) {
+            let num = match state.eval(&args[0])? {
                 Value::Lit(Literal::Num(n)) => n,
-                r => panic!("`rep`: expected first arg to be a number, but got {:?}", r),
+                r => bail!("`rep`: expected first arg to be a number, but got {:?}", r),
             };
 
             let rep = (0..num).map(|_| args[1].clone()).collect();
@@ -38,7 +56,7 @@ const BUILTINS: &[BuiltinFunc] = &[
 ];
 
 impl fmt::Debug for BuiltinFunc {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         writeln!(fmt, "BuiltinFunc {{ name: {:?}, ... }}", self.name)
     }
 }
@@ -83,20 +101,19 @@ impl State {
             scope: HashMap::new(),
             rand: rand::thread_rng(),
         };
-        s.init_builtins();
+        for builtin in BUILTINS {
+            s.scope.insert(
+                builtin.name.to_string(),
+                NamedItem::Builtin(builtin),
+            );
+        }
         s
     }
 
-    fn init_builtins(&mut self) {
-        for builtin in BUILTINS {
-            self.scope.insert(builtin.name.to_string(), NamedItem::Builtin(builtin));
-        }
-    }
-
-    pub fn execute(&mut self, stmt: &Stmt) {
-        match stmt {
+    pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Error> {
+        Ok(match stmt {
             Stmt::Puts(expr) => {
-                let val = self.eval(expr);
+                let val = self.eval(expr)?;
                 println!("{}", val.to_string());
             }
             Stmt::Assn(name, expr) => {
@@ -109,21 +126,21 @@ impl State {
                 }).collect();
                 self.scope.insert(name.to_string(), NamedItem::Expr(Expr::Chc(choices)));
             }
-            _ => panic!("unimplemented"),
-        }
+            _ => bail!("unimplemented"),
+        })
     }
 
-    fn eval(&mut self, expr: &Expr) -> Value {
+    fn eval(&mut self, expr: &Expr) -> Result<Value, Error> {
         match expr {
-            Expr::Lit(l) => Value::Lit(l.clone()),
+            Expr::Lit(l) => Ok(Value::Lit(l.clone())),
             Expr::Var(v) => {
                 let e = match self.scope.get(v) {
                     Some(NamedItem::Expr(e)) =>
                         e.clone(),
                     Some(NamedItem::Builtin(b)) =>
-                        return Value::Builtin(b),
+                        return Ok(Value::Builtin(b)),
                     None =>
-                        panic!("no such thing: {}", v),
+                        bail!("no such thing: {}", v),
                 };
                 self.eval(&e)
             }
@@ -133,10 +150,10 @@ impl State {
                 } else {
                     let mut buf = String::new();
                     for expr in cat {
-                        let val = self.eval(expr);
+                        let val = self.eval(expr)?;
                         buf.push_str(&val.to_string());
                     }
-                    Value::Lit(Literal::Str(buf))
+                    Ok(Value::Lit(Literal::Str(buf)))
                 }
             }
             Expr::Chc(choices) => {
@@ -147,29 +164,29 @@ impl State {
                 }
             }
             Expr::Tup(values) =>
-                Value::Tup(values.iter().map(|v| self.eval(v)).collect()),
+                Ok(Value::Tup(values.iter().map(|v| self.eval(v)).collect::<Result<Vec<Value>, Error>>()?)),
             Expr::Ap(fun, arg) => {
-                match self.eval(fun) {
+                match self.eval(fun)? {
                     Value::Builtin(builtin) => (builtin.callback)(self, arg),
-                    _ => panic!("bad function: {:?}", fun),
+                    _ => bail!("bad function: {:?}", fun),
                 }
             }
             Expr::Range(from, to) => {
-                let from = match self.eval(from) {
+                let from = match self.eval(from)? {
                     Value::Lit(Literal::Num(n)) => n,
-                    e => panic!("bad start in range: {}", e.to_string()),
+                    e => bail!("bad start in range: {}", e.to_string()),
                 };
-                let to = match self.eval(to) {
+                let to = match self.eval(to)? {
                     Value::Lit(Literal::Num(n)) => n,
-                    e => panic!("bad end in range: {}", e.to_string()),
+                    e => bail!("bad end in range: {}", e.to_string()),
                 };
-                Value::Lit(Literal::Num(self.rand.gen_range(from..=to)))
+                Ok(Value::Lit(Literal::Num(self.rand.gen_range(from..=to))))
             }
-            _ => panic!("unimplemented: {:?}", expr),
+            _ => bail!("unimplemented: {:?}", expr),
         }
     }
 
-    fn choose(&mut self, choices: &[Choice]) -> Value {
+    fn choose(&mut self, choices: &[Choice]) -> Result<Value, Error> {
         let max = choices.iter().map(Choice::weight).sum();
         let mut choice = self.rand.gen_range(0..max);
         for ch in choices {
@@ -178,6 +195,6 @@ impl State {
             }
             choice -= ch.weight();
         }
-        panic!("unreachable")
+        bail!("unreachable")
     }
 }
