@@ -1,0 +1,15 @@
+word := begin rep.<1..4, syll> end;
+syll := cons vowel;
+end := cons vowel final | cons 'é' final | cons 'a' final | 'r' | 'n';
+
+begin := vowel | initcons vowel;
+
+cons ::= b c d d ch d f g g gn h j l l l lh m m m n n n nh
+         p qu r s s s ss ss ss sc sc t t t tg tj tz tz tr rt v z;
+initcons ::= b c d ch d f g gn h j l m n p qu r s sc t v;
+vowel := 4: commonvowel | uncommonvowel;
+commonvowel ::= a i u e é o;
+uncommonvowel ::= à è ó ò í ú;
+final := 's' | 6: '';
+
+puts word;

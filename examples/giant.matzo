@@ -1,0 +1,12 @@
+word := begin rep.<1..3,syll> end;
+syll := vowel cons;
+end := vowel ('n'| 'ns' | 's' | '');
+begin := 2: cons | beginvowel;
+
+cons ::= b c ch d f g gh h j l m n p r s t th v x wh;
+vowel := 3: normalvowel | accentvowel;
+normalvowel ::= a i u e o;
+accentvowel ::= á í ú é ó y;
+beginvowel  ::= a á i u e o;
+
+puts word;

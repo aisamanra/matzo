@@ -1,0 +1,14 @@
+word := syll | 4: syll ending | 2: syll syll ending | syll syll syll ending;
+syll := vowel cons | glide vowel cons;
+
+ending := 'in'| 'en' | 'e' | 'än' | 'ën' | 'er' | 'inn' | cons 's'
+        | 'ich' | 'ert' | 'urt' | 'ern' | 'urn';
+cons ::= p b pf m v t d tz n s zr l tsc sc ch y k g h;
+vowel := 3: basevowel | umlvowel | dipth;
+
+basevowel ::= a i u e o;
+umlvowel  ::= ä ï ü ë ö;
+dipth     ::= ei au eu eu äu;
+glide     ::= l r ch t;
+
+puts word;
