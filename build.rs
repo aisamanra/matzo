@@ -6,7 +6,7 @@ use std::path::Path;
 const TEST_PREFIX: &str = "
 #[cfg(test)]
 use pretty_assertions::assert_eq;
-use crate::grammar;
+use crate::{grammar,lexer};
 use std::io::Write;
 
 // to let us use pretty_assertions with strings, we write a newtype
@@ -31,7 +31,8 @@ const TEST_TEMPLATE: &str = "
 #[test]
 fn test_%PREFIX%() {
   let source = include_str!(\"%ROOT%/tests/%PREFIX%.matzo\");
-  let ast = grammar::StmtsParser::new().parse(source);
+  let lexer = lexer::tokens(source);
+  let ast = grammar::StmtsParser::new().parse(lexer);
   assert!(ast.is_ok());
   let ast = ast.unwrap();
 

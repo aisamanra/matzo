@@ -11,6 +11,11 @@
                                     "foo",
                                 ),
                             ),
+                            Lit(
+                                Str(
+                                    "foo",
+                                ),
+                            ),
                         ],
                     ),
                 },
@@ -24,6 +29,11 @@
                     weight: None,
                     value: Cat(
                         [
+                            Lit(
+                                Str(
+                                    "foo bar baz",
+                                ),
+                            ),
                             Lit(
                                 Str(
                                     "foo bar baz",
@@ -47,6 +57,11 @@
                                     "won't you",
                                 ),
                             ),
+                            Lit(
+                                Str(
+                                    "quoth the raven \"nevermore\"",
+                                ),
+                            ),
                         ],
                     ),
                 },
@@ -63,6 +78,34 @@
                             Lit(
                                 Str(
                                     "this\nthat",
+                                ),
+                            ),
+                            Lit(
+                                Str(
+                                    "one\ntwo",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Str(
+                                    "\n\t\r",
+                                ),
+                            ),
+                            Lit(
+                                Str(
+                                    "\n\t\r",
                                 ),
                             ),
                         ],

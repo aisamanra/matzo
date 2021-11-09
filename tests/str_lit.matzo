@@ -1,10 +1,15 @@
 (* basic string literals *)
-puts 'foo';
+puts 'foo' "foo";
 (* string literals with spaces *)
-puts 'foo bar baz';
+puts 'foo bar baz' "foo bar baz";
 
 (* string literals with escaped quotes *)
-puts 'won\'t you';
+puts
+  'won\'t you'
+  "quoth the raven \"nevermore\"";
 
 (* string literals with escaped newlines *)
-puts 'this\nthat';
+puts 'this\nthat' "one\ntwo";
+
+(* various escapes *)
+puts '\n\t\r' "\n\t\r";
