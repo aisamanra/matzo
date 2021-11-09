@@ -1,0 +1,10 @@
+(* basic string literals *)
+puts 'foo';
+(* string literals with spaces *)
+puts 'foo bar baz';
+
+(* string literals with escaped quotes *)
+puts 'won\'t you';
+
+(* string literals with escaped newlines *)
+puts 'this\nthat';

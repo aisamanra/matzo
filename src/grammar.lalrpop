@@ -22,6 +22,7 @@ match {
     r"[a-z][A-Za-z0-9_-]*",
     r"[A-Z][A-Za-z0-9_-]*",
     r"[0-9]+",
+    r"'([^'\\]|\\.)*'",
     r"\s*" => {},
     r"\(\*([^*]|\*[^)])*\*\)" => {},
 }
@@ -87,5 +88,6 @@ pub Num: i64 = {
 
 pub Literal: Literal = {
     <Num> => Literal::Num(<>),
+    r"'([^'\\]|\\.)*'" => Literal::from_str_literal(<>),
     r"[A-Z][A-Za-z0-9_-]*" => Literal::Atom(<>.to_owned()),
 };
