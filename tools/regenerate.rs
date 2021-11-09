@@ -5,7 +5,7 @@ use std::io::Write;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     for exp in std::fs::read_dir("tests")? {
         let exp = exp?.path().canonicalize()?;
-        let fname = exp.file_name().ok_or("bad")?.to_string_lossy();
+        let fname = exp.file_name().ok_or("bad file name")?.to_string_lossy();
         if let Some(prefix) = fname.strip_suffix(".matzo") {
             println!("regenerating {}.matzo", prefix);
             let exp_filename = |new_suffix| {

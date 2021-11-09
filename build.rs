@@ -44,24 +44,26 @@ fn test_%PREFIX%() {
 }
 ";
 
-fn main() {
-    lalrpop::process_root().unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    lalrpop::process_root()?;
 
-    let out_dir = env::var("OUT_DIR").unwrap();
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let out_dir = env::var("OUT_DIR")?;
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let dest = Path::new(&out_dir).join("exp_tests.rs");
-    let mut test_file = File::create(&dest).unwrap();
-    writeln!(test_file, "{}", TEST_PREFIX).unwrap();
+    let mut test_file = File::create(&dest)?;
+    writeln!(test_file, "{}", TEST_PREFIX)?;
 
-    for exp in std::fs::read_dir("tests").unwrap() {
-        let exp = exp.unwrap().path().canonicalize().unwrap();
-        let fname = exp.file_name().unwrap().to_string_lossy();
+    for exp in std::fs::read_dir("tests")? {
+        let exp = exp?.path().canonicalize()?;
+        let fname = exp.file_name().ok_or("bad file name")?.to_string_lossy();
         if let Some(prefix) = fname.strip_suffix(".matzo") {
             let test = TEST_TEMPLATE
                 .replace("%FILE%", &fname)
                 .replace("%PREFIX%", prefix)
                 .replace("%ROOT%", &manifest_dir);
-            writeln!(test_file, "{}", test).unwrap();
+            writeln!(test_file, "{}", test)?;
         }
     }
+
+    Ok(())
 }
