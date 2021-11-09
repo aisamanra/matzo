@@ -1,5 +1,5 @@
-use matzo::lexer;
 use matzo::grammar;
+use matzo::lexer;
 
 use std::io::Write;
 

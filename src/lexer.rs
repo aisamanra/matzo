@@ -94,7 +94,7 @@ pub enum Token<'a> {
     #[error]
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[regex(r"\(\*([^*]|\*[^)])*\*\)", logos::skip)]
-    Error
+    Error,
 }
 
 #[derive(Debug)]
@@ -102,9 +102,7 @@ pub struct LexerError;
 
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
-pub fn tokens(
-    source: &str,
-) -> impl Iterator<Item = Spanned<Token<'_>, usize, LexerError>> {
+pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Token<'_>, usize, LexerError>> {
     Token::lexer(source)
         .spanned()
         .map(move |(token, range)| match token {

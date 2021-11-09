@@ -22,17 +22,13 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
         "{}",
         ansi_term::Colour::Blue.bold().paint("matzo interpreter"),
     );
-    println!(
-        "{}",
-        ansi_term::Colour::Blue.paint("(work-in-progress)"),
-    );
+    println!("{}", ansi_term::Colour::Blue.paint("(work-in-progress)"),);
 
     loop {
         let line = match rl.readline(">>> ") {
             Ok(ln) => ln,
-            Err(rustyline::error::ReadlineError::Eof) |
-            Err(rustyline::error::ReadlineError::Interrupted) =>
-                return Ok(()),
+            Err(rustyline::error::ReadlineError::Eof)
+            | Err(rustyline::error::ReadlineError::Interrupted) => return Ok(()),
             err => err?,
         };
         let lexed = tokens(&line);
@@ -49,12 +45,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
                     Err(_) => {
                         // that didn't fix it, so report the
                         // _original_ parse error, not the new one
-                        eprintln!(
-                            "{}",
-                            ansi_term::Colour::Red.paint(
-                                format!("{:?}", err)
-                            ),
-                        );
+                        eprintln!("{}", ansi_term::Colour::Red.paint(format!("{:?}", err)),);
                         continue;
                     }
                 }

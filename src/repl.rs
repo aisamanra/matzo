@@ -1,9 +1,5 @@
 use rustyline::{
-    Helper,
-    completion::Completer,
-    hint::Hinter,
-    highlight::Highlighter,
-    validate::Validator,
+    completion::Completer, highlight::Highlighter, hint::Hinter, validate::Validator, Helper,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -21,8 +17,13 @@ impl Repl {
 impl Completer for Repl {
     type Candidate = String;
 
-    fn complete(&self, line: &str, pos: usize, _ctx: &rustyline::Context<'_>) -> rustyline::Result<(usize, Vec<String>)> {
-        if let Some(c) = line.chars().nth(pos-1) {
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        _ctx: &rustyline::Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<String>)> {
+        if let Some(c) = line.chars().nth(pos - 1) {
             if c.is_alphabetic() {
                 // this means we're looking at maybe something
                 // alphabetic; let's see what the current typed thing
@@ -38,7 +39,10 @@ impl Completer for Repl {
                 }
                 // we've now found the current fragment
                 let so_far = &line[str_start..pos];
-                return Ok((str_start, self.state.borrow().autocomplete(so_far, str_start == 0)))
+                return Ok((
+                    str_start,
+                    self.state.borrow().autocomplete(so_far, str_start == 0),
+                ));
             }
         }
         Ok((pos, Vec::new()))
@@ -49,11 +53,8 @@ impl Hinter for Repl {
     type Hint = String;
 }
 
-impl Highlighter for Repl {
-}
+impl Highlighter for Repl {}
 
-impl Validator for Repl {
-}
+impl Validator for Repl {}
 
-impl Helper for Repl {
-}
+impl Helper for Repl {}

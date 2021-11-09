@@ -47,8 +47,7 @@ impl Value {
                 buf.push_str(">");
                 f(&buf)
             }
-            Value::Builtin(func) =>
-                f(&format!("#<builtin {}>", func.name)),
+            Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
         }
     }
 
@@ -89,9 +88,8 @@ const BUILTINS: &[BuiltinFunc] = &[
             let num = state.eval(&args[0])?.as_num()?;
             let rep = (0..num).map(|_| args[1].clone()).collect();
             state.eval(&Expr::Cat(rep))
-        }
+        },
     },
-
     BuiltinFunc {
         name: "length",
         callback: &|_state: &mut State, expr: &Expr| -> Result<Value, Error> {
@@ -100,23 +98,21 @@ const BUILTINS: &[BuiltinFunc] = &[
                 _ => bail!("`length`: expected tuple"),
             };
             Ok(Value::Lit(Literal::Num(args.len() as i64)))
-        }
+        },
     },
-
     BuiltinFunc {
         name: "to-upper",
         callback: &|state: &mut State, expr: &Expr| -> Result<Value, Error> {
             let s = state.eval(expr)?;
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
-        }
+        },
     },
-
     BuiltinFunc {
         name: "to-lower",
         callback: &|state: &mut State, expr: &Expr| -> Result<Value, Error> {
             let s = state.eval(expr)?;
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
-        }
+        },
     },
 ];
 
@@ -143,10 +139,8 @@ impl State {
             rand: rand::thread_rng(),
         };
         for builtin in BUILTINS {
-            s.scope.insert(
-                builtin.name.to_string(),
-                NamedItem::Builtin(builtin),
-            );
+            s.scope
+                .insert(builtin.name.to_string(), NamedItem::Builtin(builtin));
         }
         s
     }
@@ -173,14 +167,19 @@ impl State {
                 println!("{}", val.to_string());
             }
             Stmt::Assn(name, expr) => {
-                self.scope.insert(name.to_string(), NamedItem::Expr(expr.clone()));
+                self.scope
+                    .insert(name.to_string(), NamedItem::Expr(expr.clone()));
             }
             Stmt::LitAssn(name, strs) => {
-                let choices = strs.iter().map(|s| Choice {
-                    weight: None,
-                    value: Expr::Lit(Literal::Str(s.clone())),
-                }).collect();
-                self.scope.insert(name.to_string(), NamedItem::Expr(Expr::Chc(choices)));
+                let choices = strs
+                    .iter()
+                    .map(|s| Choice {
+                        weight: None,
+                        value: Expr::Lit(Literal::Str(s.clone())),
+                    })
+                    .collect();
+                self.scope
+                    .insert(name.to_string(), NamedItem::Expr(Expr::Chc(choices)));
             }
             _ => bail!("unimplemented"),
         })
@@ -191,12 +190,9 @@ impl State {
             Expr::Lit(l) => Ok(Value::Lit(l.clone())),
             Expr::Var(v) => {
                 let e = match self.scope.get(v) {
-                    Some(NamedItem::Expr(e)) =>
-                        e.clone(),
-                    Some(NamedItem::Builtin(b)) =>
-                        return Ok(Value::Builtin(b)),
-                    None =>
-                        bail!("no such thing: {}", v),
+                    Some(NamedItem::Expr(e)) => e.clone(),
+                    Some(NamedItem::Builtin(b)) => return Ok(Value::Builtin(b)),
+                    None => bail!("no such thing: {}", v),
                 };
                 self.eval(&e)
             }
@@ -219,14 +215,16 @@ impl State {
                     self.choose(choices)
                 }
             }
-            Expr::Tup(values) =>
-                Ok(Value::Tup(values.iter().map(|v| self.eval(v)).collect::<Result<Vec<Value>, Error>>()?)),
-            Expr::Ap(fun, arg) => {
-                match self.eval(fun)? {
-                    Value::Builtin(builtin) => (builtin.callback)(self, arg),
-                    _ => bail!("bad function: {:?}", fun),
-                }
-            }
+            Expr::Tup(values) => Ok(Value::Tup(
+                values
+                    .iter()
+                    .map(|v| self.eval(v))
+                    .collect::<Result<Vec<Value>, Error>>()?,
+            )),
+            Expr::Ap(fun, arg) => match self.eval(fun)? {
+                Value::Builtin(builtin) => (builtin.callback)(self, arg),
+                _ => bail!("bad function: {:?}", fun),
+            },
             Expr::Range(from, to) => {
                 let from = self.eval(from)?.as_num()?;
                 let to = self.eval(to)?.as_num()?;
