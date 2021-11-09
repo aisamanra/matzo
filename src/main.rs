@@ -1,9 +1,6 @@
 use matzo::grammar::StmtsParser;
 use matzo::interp::State;
 use matzo::lexer::tokens;
-use logos::Logos;
-
-use std::io::Write;
 
 fn run(src: &str) {
     let lexed = tokens(&src);
@@ -16,19 +13,22 @@ fn run(src: &str) {
     }
 }
 
-fn run_repl() -> std::io::Result<()> {
+fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
+    let mut rl = rustyline::Editor::<()>::new();
     let mut state = State::new();
     let parser = StmtsParser::new();
-    let mut stdout = std::io::stdout();
-    let stdin = std::io::stdin();
-    let mut buf = String::new();
+    println!("matzo interpreter");
+    println!("(work-in-progress)");
 
     loop {
-        stdout.write(b">>> ")?;
-        stdout.flush()?;
-        buf.clear();
-        stdin.read_line(&mut buf)?;
-        let lexed = tokens(&buf);
+        let line = match rl.readline(">>> ") {
+            Ok(ln) => ln,
+            Err(rustyline::error::ReadlineError::Eof) |
+            Err(rustyline::error::ReadlineError::Interrupted) =>
+                return Ok(()),
+            err => err?,
+        };
+        let lexed = tokens(&line);
 
         let stmts = match parser.parse(lexed) {
             Ok(stmts) => stmts,

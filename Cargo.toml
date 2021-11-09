@@ -23,6 +23,7 @@ regex = "1"
 rand = "*"
 lalrpop-util = { version = "*", features = ["lexer"] }
 logos = "*"
+rustyline = "*"
 
 [build-dependencies.lalrpop]
 version = "*"
