@@ -88,6 +88,7 @@ enum Token<'a> {
     Num(i64),
 
     #[regex(r"'([^'\\]|\\.)*'", parse_str)]
+    #[regex("\"([^\"\\\\]|\\\\.)*\"", parse_str)]
     Str(String),
 
     #[error]
@@ -104,7 +105,7 @@ mod test {
 
     #[test]
     fn simple_lexer_test() {
-        let mut lex = Token::lexer("x := Foo (* ignore *) | 'bar';");
+        let mut lex = Token::lexer("x := Foo (* ignore *) | \"bar\";");
         assert_eq!(lex.next(), Some(Token::Var("x")));
         assert_eq!(lex.next(), Some(Token::Assn));
         assert_eq!(lex.next(), Some(Token::Atom("Foo")));
