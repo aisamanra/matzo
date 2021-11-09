@@ -1,0 +1,19 @@
+word := syll (rep.<1..4, syll>);
+
+syll := 2: cons vowel | cons vowel;
+
+(* Vowels *)
+vowel := 5: cardinal | 2: accented | diphthongs;
+cardinal ::= a e i o u;
+accented ::= á é í ó ú;
+diphthongs ::= ai au ia ua eu ue;
+
+(* Consonants *)
+cons := 2: avgcons | 4: commcons | 6: vercomcons | othercons;
+
+avgcons ::= p b k g m n f v s;
+commcons ::= t d;
+vercomcons ::= r l;
+othercons ::= ph bh kh gh mh nh fh;
+
+puts word;
