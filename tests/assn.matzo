@@ -1,3 +1,9 @@
 (* testing simple assignment statements *)
 x := 5;
 y := This;
+
+(* literal assignment statements *)
+a ::= a b c d;
+
+(* with unicode *)
+fóo ::= á þ ç đ;
