@@ -1,0 +1,12 @@
+word := init ending | init syll ending | init syll syll ending;
+
+init := initcons vowel | vowel | vowel cons vowel;
+syll := cons vowel;
+ending := cons | cons vowel;
+
+cons := 10: basecons | 'l' initcons | 'r' initcons;
+basecons ::= b d f g j k l m n ñ p r s t x z tx dd ll rr ts tt tz sk;
+initcons ::= b d f g j k l m n n ñ p r s t t x z;
+vowel    ::= a a i u e e o o;
+
+puts word;
