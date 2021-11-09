@@ -30,29 +30,31 @@ impl Value {
         }
     }
 
-    fn with_str<U>(&self, f: impl Fn(&str) -> U) -> U {
+    fn with_str<U>(&self, f: impl FnOnce(&str) -> U) -> U {
         match self {
-            Value::Lit(Literal::Str(s)) => f(&s),
-            Value::Lit(Literal::Atom(s)) => f(&s),
+            Value::Lit(Literal::Str(s)) => f(s),
+            Value::Lit(Literal::Atom(s)) => f(s),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
             Value::Tup(values) => {
                 let mut buf = String::new();
-                buf.push_str("<");
+                buf.push('<');
                 for (i, val) in values.iter().enumerate() {
                     if i > 0 {
                         buf.push_str(", ");
                     }
                     buf.push_str(&val.to_string());
                 }
-                buf.push_str(">");
+                buf.push('>');
                 f(&buf)
             }
             Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
         }
     }
+}
 
-    fn to_string(&self) -> String {
-        self.with_str(|s| s.to_string())
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.with_str(|s| write!(f, "{}", s))
     }
 }
 
@@ -132,6 +134,12 @@ pub struct State {
     rand: rand::rngs::ThreadRng,
 }
 
+impl Default for State {
+    fn default() -> State {
+        Self::new()
+    }
+}
+
 impl State {
     pub fn new() -> State {
         let mut s = State {
@@ -152,16 +160,14 @@ impl State {
                 possibilities.push(name.clone());
             }
         }
-        if at_beginning {
-            if "puts".starts_with(fragment) {
-                possibilities.push("puts ".to_owned());
-            }
+        if at_beginning && "puts".starts_with(fragment) {
+            possibilities.push("puts ".to_owned());
         }
         possibilities
     }
 
     pub fn execute(&mut self, stmt: &Stmt) -> Result<(), Error> {
-        Ok(match stmt {
+        match stmt {
             Stmt::Puts(expr) => {
                 let val = self.eval(expr)?;
                 println!("{}", val.to_string());
@@ -182,7 +188,8 @@ impl State {
                     .insert(name.to_string(), NamedItem::Expr(Expr::Chc(choices)));
             }
             _ => bail!("unimplemented"),
-        })
+        }
+        Ok(())
     }
 
     fn eval(&mut self, expr: &Expr) -> Result<Value, Error> {

@@ -54,25 +54,3 @@ pub enum Literal {
     Atom(String),
     Num(i64),
 }
-
-impl Literal {
-    pub fn from_str_literal(s: &str) -> Literal {
-        // strip the outer pieces from the string
-        let mut buf = String::new();
-        let mut src = s[1..s.len() - 1].chars().into_iter();
-        while let Some(c) = src.next() {
-            if c == '\\' {
-                match src.next() {
-                    Some('n') => buf.push('\n'),
-                    Some('t') => buf.push('\t'),
-                    Some('r') => buf.push('\r'),
-                    Some(c) => buf.push(c),
-                    None => panic!("bad escape"),
-                }
-            } else {
-                buf.push(c);
-            }
-        }
-        Literal::Str(buf)
-    }
-}

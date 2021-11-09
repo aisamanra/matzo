@@ -3,7 +3,7 @@ use matzo::interp::State;
 use matzo::lexer::tokens;
 
 fn run(src: &str) {
-    let lexed = tokens(&src);
+    let lexed = tokens(src);
     let stmts = StmtsParser::new().parse(lexed).unwrap();
     let mut state = State::new();
     for stmt in stmts {

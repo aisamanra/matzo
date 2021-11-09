@@ -2,13 +2,13 @@ use logos::{Lexer, Logos};
 
 fn parse_num<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<i64> {
     let slice = lex.slice();
-    Some(slice.parse().ok()?)
+    slice.parse().ok()
 }
 
 fn parse_str<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
     let mut buf = String::new();
     let s = lex.slice();
-    let mut src = s[1..s.len() - 1].chars().into_iter();
+    let mut src = s[1..s.len() - 1].chars();
     while let Some(c) = src.next() {
         if c == '\\' {
             match src.next() {
