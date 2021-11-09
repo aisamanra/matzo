@@ -11,4 +11,4 @@ syll := 4: cons vowel | vowel;
 
 (* And finally, here's an output statement *)
 (* puts syll (6 @ syll); *)
-puts syll syll syll syll;
+puts syll rep.<1..6, syll>;

@@ -1,4 +1,4 @@
-word := start (rep.4.syll) end;
+word := start (rep.<1..4,syll>) end;
 syll := vowel cons;
 start := 3: cons | 2: '';
 end := 3: vowel | vowel 's'| vowel 'n';

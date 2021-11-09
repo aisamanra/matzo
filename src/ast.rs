@@ -20,6 +20,7 @@ pub enum Expr {
     Let(Name, Box<Expr>, Box<Expr>),
     Fun(Vec<Case>),
     Case(Box<Expr>, Vec<Case>),
+    Range(Box<Expr>, Box<Expr>),
 }
 
 #[derive(Debug, Clone)]

@@ -14,6 +14,7 @@ match {
     ",",
     ";",
     ".",
+    "..",
     ":=",
     "::=",
     "puts",
@@ -73,9 +74,14 @@ pub Term: Expr = {
 };
 
 pub Branch: Expr = {
-    <l:Branch> "." <r:Leaf> => Expr::Ap(Box::new(l), Box::new(r)),
-    <Leaf> => <>,
+    <l:Branch> "." <r:Subbranch> => Expr::Ap(Box::new(l), Box::new(r)),
+    <Subbranch> => <>,
 };
+
+pub Subbranch: Expr = {
+    <l:Subbranch> ".." <r:Leaf> => Expr::Range(Box::new(l), Box::new(r)),
+    <Leaf> => <>,
+}
 
 pub Leaf: Expr = {
     <Literal> => Expr::Lit(<>),
