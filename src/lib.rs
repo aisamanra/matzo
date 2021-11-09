@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lalrpop_util;
 
+pub mod lexer;
 pub mod ast;
 pub mod interp;
 
