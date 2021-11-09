@@ -1,9 +1,20 @@
 [
     Puts(
-        Lit(
-            Num(
-                55,
-            ),
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Num(
+                                    55,
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
         ),
     ),
 ]

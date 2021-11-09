@@ -5,6 +5,10 @@ grammar;
 match {
     "<",
     ">",
+    "(",
+    ")",
+    "{",
+    "}",
     "|",
     ":",
     ",",
@@ -23,40 +27,63 @@ match {
 use crate::ast::*;
 
 pub Stmts: Vec<Stmt> = {
-  <mut stmts:(<Stmt> ";")*> <stmt:Stmt?> => match stmt {
-    None => stmts,
-    Some(stmt) => {
-      stmts.push(stmt);
-      stmts
-    }
-  },
+    <mut stmts:(<Stmt> ";")*> <stmt:Stmt?> => match stmt {
+        None => stmts,
+        Some(stmt) => {
+            stmts.push(stmt);
+            stmts
+        }
+    },
 };
 
 pub Stmt: Stmt = {
-  "puts" <Expr> => Stmt::Puts(<>),
-  <Name> ":=" <Expr> => Stmt::Assn(<>),
+    "puts" <Expr> => Stmt::Puts(<>),
+    <Name> ":=" <Expr> => Stmt::Assn(<>),
 };
 
 pub Name: String = {
-  r"[a-z][A-Za-z0-9_-]*" => <>.to_owned(),
+    r"[a-z][A-Za-z0-9_-]*" => <>.to_owned(),
 };
 
 pub Expr: Expr = {
-  <Literal> => Expr::Lit(<>),
-  <Name> => Expr::Var(<>),
-  "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
-    es.push(e);
-    Expr::Tup(es)
-  },
-  "let" <name:Name> ":=" <e1:Expr> "in" <e2:Expr> =>
-    Expr::Let(name, Box::new(e1), Box::new(e2)),
+    <mut ts:(<Choice> "|")*> <t:Choice> => {
+        ts.push(t);
+        Expr::Chc(ts)
+    }
+};
+
+pub Choice: Choice = {
+    <weight:Num> ":" <value:Term> => Choice {
+        weight: Some(weight),
+        value
+    },
+    <value:Term> => Choice {
+        weight: None,
+        value
+    }
+};
+
+pub Term: Expr = {
+    (<Leaf>)* => Expr::Cat(<>),
+};
+
+pub Leaf: Expr = {
+    <Literal> => Expr::Lit(<>),
+    <Name> => Expr::Var(<>),
+    "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
+        es.push(e);
+        Expr::Tup(es)
+    },
+    "let" <name:Name> ":=" <e1:Expr> "{" <e2:Expr> "}" =>
+        Expr::Let(name, Box::new(e1), Box::new(e2)),
+    "(" <e:Expr> ")" => e,
 };
 
 pub Num: i64 = {
-  r"[0-9]+" => i64::from_str(<>).unwrap(),
+    r"[0-9]+" => i64::from_str(<>).unwrap(),
 };
 
 pub Literal: Literal = {
-  <Num> => Literal::Num(<>),
-  r"[A-Z][A-Za-z0-9_-]*" => Literal::Atom(<>.to_owned()),
+    <Num> => Literal::Num(<>),
+    r"[A-Z][A-Za-z0-9_-]*" => Literal::Atom(<>.to_owned()),
 };

@@ -1,9 +1,20 @@
 [
     Puts(
-        Lit(
-            Atom(
-                "Foo",
-            ),
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "Foo",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
         ),
     ),
 ]

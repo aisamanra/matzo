@@ -1,25 +1,5 @@
 [
-    Assn(
-        "x",
-        Chc(
-            [
-                Choice {
-                    weight: None,
-                    value: Cat(
-                        [
-                            Lit(
-                                Num(
-                                    5,
-                                ),
-                            ),
-                        ],
-                    ),
-                },
-            ],
-        ),
-    ),
-    Assn(
-        "y",
+    Puts(
         Chc(
             [
                 Choice {
@@ -29,6 +9,41 @@
                             Lit(
                                 Atom(
                                     "This",
+                                ),
+                            ),
+                            Lit(
+                                Atom(
+                                    "That",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "This",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "That",
                                 ),
                             ),
                         ],
