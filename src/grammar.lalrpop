@@ -1,35 +1,38 @@
 use std::str::FromStr;
-
-grammar;
-
-match {
-    "<",
-    ">",
-    "(",
-    ")",
-    "{",
-    "}",
-    "|",
-    ":",
-    ",",
-    ";",
-    ".",
-    "..",
-    ":=",
-    "::=",
-    "puts",
-    "case",
-    "let",
-    "in",
-    r"\p{Ll}(\pL|[0-9_-])*",
-    r"\p{Lu}(\pL|[0-9_-])*",
-    r"[0-9]+",
-    r"'([^'\\]|\\.)*'",
-    r"\s*" => {},
-    r"\(\*([^*]|\*[^)])*\*\)" => {},
-}
-
 use crate::ast::*;
+use crate::lexer::*;
+
+grammar<'input>;
+
+extern {
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token<'input> {
+        "<" => Token::LAngle,
+        ">" => Token::RAngle,
+        "(" => Token::LPar,
+        ")" => Token::RPar,
+        "{" => Token::LCurl,
+        "}" => Token::RCurl,
+        "|" => Token::Pipe,
+        ":" => Token::Colon,
+        "," => Token::Comma,
+        ";" => Token::Semi,
+        "." => Token::Dot,
+        ".." => Token::DotDot,
+        ":=" => Token::Assn,
+        "::=" => Token::LitAssn,
+        "puts" => Token::Puts,
+        "case" => Token::Case,
+        "let" => Token::Let,
+        "in" => Token::In,
+        "var" => Token::Var(<&'input str>),
+        "atom" => Token::Atom(<&'input str>),
+        "num" => Token::Num(<i64>),
+        "str" => Token::Str(<String>)
+    }
+}
 
 pub Stmts: Vec<Stmt> = {
     <mut stmts:(<Stmt> ";")*> <stmt:Stmt?> => match stmt {
@@ -48,7 +51,7 @@ pub Stmt: Stmt = {
 };
 
 pub Name: String = {
-    r"\p{Ll}(\pL|[0-9_-])*" => <>.to_owned(),
+    "var" => <>.to_owned(),
 };
 
 pub Expr: Expr = {
@@ -59,7 +62,7 @@ pub Expr: Expr = {
 };
 
 pub Choice: Choice = {
-    <weight:Num> ":" <value:Term> => Choice {
+    <weight:"num"> ":" <value:Term> => Choice {
         weight: Some(weight),
         value
     },
@@ -95,12 +98,8 @@ pub Leaf: Expr = {
     "(" <e:Expr> ")" => e,
 };
 
-pub Num: i64 = {
-    r"[0-9]+" => i64::from_str(<>).unwrap(),
-};
-
 pub Literal: Literal = {
-    <Num> => Literal::Num(<>),
-    r"'([^'\\]|\\.)*'" => Literal::from_str_literal(<>),
-    r"\p{Lu}(\pL|[0-9_-])*" => Literal::Atom(<>.to_owned()),
+    "num" => Literal::Num(<>),
+    "str" => Literal::Str(<>),
+    "atom" => Literal::Atom(<>.to_owned()),
 };

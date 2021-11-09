@@ -1,3 +1,4 @@
+use matzo::lexer;
 use matzo::grammar;
 
 use std::io::Write;
@@ -16,7 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let src = std::fs::read_to_string(&exp)?;
-            if let Ok(ast) = grammar::StmtsParser::new().parse(&src) {
+            let tokens = lexer::tokens(&src);
+            if let Ok(ast) = grammar::StmtsParser::new().parse(tokens) {
                 let mut f = std::fs::File::create(exp_filename("parsed"))?;
                 writeln!(f, "{:#?}", ast)?;
             }

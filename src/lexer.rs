@@ -25,8 +25,8 @@ fn parse_str<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
     Some(buf)
 }
 
-#[derive(Logos, Debug, PartialEq)]
-enum Token<'a> {
+#[derive(Logos, Debug, PartialEq, Clone)]
+pub enum Token<'a> {
     #[token("<")]
     LAngle,
     #[token(">")]
@@ -95,6 +95,22 @@ enum Token<'a> {
     #[regex(r"[ \t\n\f]+", logos::skip)]
     #[regex(r"\(\*([^*]|\*[^)])*\*\)", logos::skip)]
     Error
+}
+
+#[derive(Debug)]
+pub struct LexerError;
+
+pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
+
+pub fn tokens(
+    source: &str,
+) -> impl Iterator<Item = Spanned<Token<'_>, usize, LexerError>> {
+    Token::lexer(source)
+        .spanned()
+        .map(move |(token, range)| match token {
+            Token::Error => Err(LexerError),
+            token => Ok((range.start, token, range.end)),
+        })
 }
 
 #[cfg(test)]

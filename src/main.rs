@@ -1,10 +1,13 @@
 use matzo::grammar::StmtsParser;
 use matzo::interp::State;
+use matzo::lexer::tokens;
+use logos::Logos;
 
 use std::io::Write;
 
 fn run(src: &str) {
-    let stmts = StmtsParser::new().parse(&src).unwrap();
+    let lexed = tokens(&src);
+    let stmts = StmtsParser::new().parse(lexed).unwrap();
     let mut state = State::new();
     for stmt in stmts {
         if let Err(err) = state.execute(&stmt) {
@@ -25,8 +28,9 @@ fn run_repl() -> std::io::Result<()> {
         stdout.flush()?;
         buf.clear();
         stdin.read_line(&mut buf)?;
+        let lexed = tokens(&buf);
 
-        let stmts = match parser.parse(&buf) {
+        let stmts = match parser.parse(lexed) {
             Ok(stmts) => stmts,
             Err(err) => {
                 eprintln!("{:?}", err);
