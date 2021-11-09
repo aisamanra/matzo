@@ -16,6 +16,11 @@
                                     "That",
                                 ),
                             ),
+                            Lit(
+                                Atom(
+                                    "The-Other",
+                                ),
+                            ),
                         ],
                     ),
                 },
@@ -27,6 +32,50 @@
             [
                 Choice {
                     weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "This",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "That",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Lit(
+                                Atom(
+                                    "The-Other",
+                                ),
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: Some(
+                        5,
+                    ),
                     value: Cat(
                         [
                             Lit(

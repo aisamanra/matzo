@@ -1,1 +1,2 @@
+(* testing atom literals *)
 puts Foo

@@ -1,2 +1,6 @@
-puts This That;
-puts This | That;
+(* catenation *)
+puts This That The-Other;
+(* choice *)
+puts This | That | The-Other;
+(* weighted choice *)
+puts 5: This | That;
