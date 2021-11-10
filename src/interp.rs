@@ -68,6 +68,18 @@ pub struct Error {
     message: String,
 }
 
+impl From<lalrpop_util::ParseError<usize, crate::lexer::Token<'_>, crate::lexer::LexerError>>
+    for Error
+{
+    fn from(
+        err: lalrpop_util::ParseError<usize, crate::lexer::Token<'_>, crate::lexer::LexerError>,
+    ) -> Error {
+        Error {
+            message: format!("{:?}", err),
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{}", self.message)
@@ -132,6 +144,7 @@ enum NamedItem {
 pub struct State {
     scope: HashMap<String, NamedItem>,
     rand: rand::rngs::ThreadRng,
+    parser: crate::grammar::StmtsParser,
 }
 
 impl Default for State {
@@ -145,12 +158,42 @@ impl State {
         let mut s = State {
             scope: HashMap::new(),
             rand: rand::thread_rng(),
+            parser: crate::grammar::StmtsParser::new(),
         };
         for builtin in BUILTINS {
             s.scope
                 .insert(builtin.name.to_string(), NamedItem::Builtin(builtin));
         }
         s
+    }
+
+    pub fn run(&mut self, src: &str) -> Result<(), Error> {
+        let lexed = crate::lexer::tokens(src);
+        let stmts = self.parser.parse(lexed)?;
+        for stmt in stmts {
+            self.execute(&stmt)?;
+        }
+        Ok(())
+    }
+
+    pub fn run_repl(&mut self, src: &str) -> Result<(), Error> {
+        let lexed = crate::lexer::tokens(src);
+        let stmts = match self.parser.parse(lexed) {
+            Ok(stmts) => stmts,
+            Err(err) => {
+                let with_puts = format!("puts {}", src);
+                let lexed = crate::lexer::tokens(&with_puts);
+                if let Ok(stmts) = self.parser.parse(lexed) {
+                    stmts
+                } else {
+                    return Err(err.into());
+                }
+            }
+        };
+        for stmt in stmts {
+            self.execute(&stmt)?;
+        }
+        Ok(())
     }
 
     pub fn autocomplete(&self, fragment: &str, at_beginning: bool) -> Vec<String> {
