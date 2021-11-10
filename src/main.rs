@@ -2,6 +2,10 @@ use matzo::grammar::StmtsParser;
 use matzo::interp::State;
 use matzo::lexer::tokens;
 
+fn matzo_version() -> String {
+    format!("matzo (git {})", env!("VERGEN_GIT_SHA"))
+}
+
 fn run(src: &str) {
     let lexed = tokens(src);
     let stmts = StmtsParser::new().parse(lexed).unwrap();
@@ -20,7 +24,7 @@ fn run_repl() -> Result<(), Box<dyn std::error::Error>> {
     let parser = StmtsParser::new();
     println!(
         "{}",
-        ansi_term::Colour::Blue.bold().paint("matzo interpreter"),
+        ansi_term::Colour::Blue.bold().paint(matzo_version()),
     );
     println!("{}", ansi_term::Colour::Blue.paint("(work-in-progress)"),);
 

@@ -48,6 +48,8 @@ fn test_%PREFIX%() {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     lalrpop::process_root()?;
 
+    vergen::vergen(vergen::Config::default())?;
+
     let out_dir = env::var("OUT_DIR")?;
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let dest = Path::new(&out_dir).join("exp_tests.rs");

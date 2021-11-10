@@ -26,6 +26,9 @@ logos = "*"
 rustyline = "*"
 ansi_term = "*"
 
+[build-dependencies]
+vergen = "*"
+
 [build-dependencies.lalrpop]
 version = "*"
 features = ["lexer"]
