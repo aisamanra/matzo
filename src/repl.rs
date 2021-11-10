@@ -51,6 +51,42 @@ impl Completer for Repl {
 
 impl Hinter for Repl {
     type Hint = String;
+
+    fn hint(&self, line: &str, pos: usize, _ctx: &rustyline::Context<'_>) -> Option<String> {
+        if pos == 0 {
+            return None;
+        }
+        if let Some(c) = line.chars().nth(pos - 1) {
+            if c.is_alphabetic() {
+                // this means we're looking at maybe something
+                // alphabetic; let's see what the current typed thing
+                // is
+                let mut str_start = 0;
+                for (idx, ch) in line.chars().enumerate() {
+                    if ch.is_whitespace() {
+                        str_start = idx + 1;
+                    }
+                    if idx == pos {
+                        break;
+                    }
+                }
+                // don't suggest for stuff that's too short
+                if pos - str_start < 2 {
+                    return None;
+                }
+                // we've now found the current fragment
+                let so_far = &line[str_start..pos];
+                let autocompletes = self.state.borrow().autocomplete(so_far, str_start == 0);
+                if autocompletes.len() == 1 {
+                    let known = autocompletes.first().unwrap();
+                    return known.strip_prefix(so_far).map(|s| ansi_term::Colour::Blue.dimmed().paint(s).to_string())
+                } else {
+                    return None;
+                }
+            }
+        }
+        None
+    }
 }
 
 impl Highlighter for Repl {}
