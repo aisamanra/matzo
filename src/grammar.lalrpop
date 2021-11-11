@@ -20,6 +20,7 @@ extern {
         ";" => Token::Semi,
         "." => Token::Dot,
         ".." => Token::DotDot,
+        "=>" => Token::Arrow,
         ":=" => Token::Assn,
         "::=" => Token::LitAssn,
         "puts" => Token::Puts,
@@ -92,9 +93,26 @@ pub Leaf: Expr = {
         es.push(e);
         Expr::Tup(es)
     },
-    "let" <name:Name> ":=" <e1:Expr> "{" <e2:Expr> "}" =>
+    "let" <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
         Expr::Let(name, Box::new(e1), Box::new(e2)),
+    "{" <mut cs:(<Case> ";")*> <c:Case> "}" => {
+        cs.push(c);
+        Expr::Fun(cs)
+    },
     "(" <e:Expr> ")" => e,
+};
+
+pub Case: Case = {
+    <pat:Pat> "=>" <expr:Expr> => Case { pat, expr },
+};
+
+pub Pat: Pat = {
+    <Literal> => Pat::Lit(<>),
+    <Name> => Pat::Var(<>),
+    "<" <mut ps:(<Pat> ",")*> <p:Pat> ">" => {
+        ps.push(p);
+        Pat::Tup(ps)
+    },
 };
 
 pub Literal: Literal = {

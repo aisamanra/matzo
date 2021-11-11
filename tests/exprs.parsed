@@ -368,4 +368,103 @@
             ],
         ),
     ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Fun(
+                                [
+                                    Case {
+                                        pat: Var(
+                                            "x",
+                                        ),
+                                        expr: Chc(
+                                            [
+                                                Choice {
+                                                    weight: None,
+                                                    value: Cat(
+                                                        [
+                                                            Var(
+                                                                "x",
+                                                            ),
+                                                        ],
+                                                    ),
+                                                },
+                                            ],
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
+    Puts(
+        Chc(
+            [
+                Choice {
+                    weight: None,
+                    value: Cat(
+                        [
+                            Fun(
+                                [
+                                    Case {
+                                        pat: Lit(
+                                            Atom(
+                                                "True",
+                                            ),
+                                        ),
+                                        expr: Chc(
+                                            [
+                                                Choice {
+                                                    weight: None,
+                                                    value: Cat(
+                                                        [
+                                                            Lit(
+                                                                Str(
+                                                                    "yes",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                },
+                                            ],
+                                        ),
+                                    },
+                                    Case {
+                                        pat: Lit(
+                                            Atom(
+                                                "False",
+                                            ),
+                                        ),
+                                        expr: Chc(
+                                            [
+                                                Choice {
+                                                    weight: None,
+                                                    value: Cat(
+                                                        [
+                                                            Lit(
+                                                                Str(
+                                                                    "no",
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    ),
+                                                },
+                                            ],
+                                        ),
+                                    },
+                                ],
+                            ),
+                        ],
+                    ),
+                },
+            ],
+        ),
+    ),
 ]

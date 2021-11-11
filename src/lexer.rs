@@ -60,6 +60,9 @@ pub enum Token<'a> {
     #[token("..")]
     DotDot,
 
+    #[token("=>")]
+    Arrow,
+
     #[token(":=")]
     Assn,
 

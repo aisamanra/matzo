@@ -21,3 +21,7 @@ puts x..y;
 
 (* application *)
 puts f.x;
+
+(* lambdas *)
+puts { x => x };
+puts { True => "yes" ; False => "no" };
