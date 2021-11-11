@@ -33,7 +33,7 @@ impl Value {
     fn with_str<U>(&self, f: impl FnOnce(&str) -> U) -> U {
         match self {
             Value::Lit(Literal::Str(s)) => f(s),
-            Value::Lit(Literal::Atom(s)) => f(s),
+            Value::Lit(Literal::Atom(s)) => f(&format!("{:?}", s)),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
             Value::Tup(values) => {
                 let mut buf = String::new();
@@ -142,7 +142,8 @@ enum NamedItem {
 }
 
 pub struct State {
-    scope: HashMap<String, NamedItem>,
+    ast: ASTArena,
+    scope: HashMap<Name, NamedItem>,
     rand: rand::rngs::ThreadRng,
     parser: crate::grammar::StmtsParser,
 }
@@ -159,17 +160,18 @@ impl State {
             scope: HashMap::new(),
             rand: rand::thread_rng(),
             parser: crate::grammar::StmtsParser::new(),
+            ast: ASTArena::new(),
         };
         for builtin in BUILTINS {
-            s.scope
-                .insert(builtin.name.to_string(), NamedItem::Builtin(builtin));
+            let sym = s.ast.add_string(builtin.name);
+            s.scope.insert(sym, NamedItem::Builtin(builtin));
         }
         s
     }
 
     pub fn run(&mut self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
-        let stmts = self.parser.parse(lexed)?;
+        let stmts = self.parser.parse(&mut self.ast, lexed)?;
         for stmt in stmts {
             self.execute(&stmt)?;
         }
@@ -178,12 +180,12 @@ impl State {
 
     pub fn run_repl(&mut self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
-        let stmts = match self.parser.parse(lexed) {
+        let stmts = match self.parser.parse(&mut self.ast, lexed) {
             Ok(stmts) => stmts,
             Err(err) => {
                 let with_puts = format!("puts {}", src);
                 let lexed = crate::lexer::tokens(&with_puts);
-                if let Ok(stmts) = self.parser.parse(lexed) {
+                if let Ok(stmts) = self.parser.parse(&mut self.ast, lexed) {
                     stmts
                 } else {
                     return Err(err.into());
@@ -199,8 +201,8 @@ impl State {
     pub fn autocomplete(&self, fragment: &str, at_beginning: bool) -> Vec<String> {
         let mut possibilities = Vec::new();
         for name in self.scope.keys() {
-            if name.starts_with(fragment) {
-                possibilities.push(name.clone());
+            if self.ast[*name].starts_with(fragment) {
+                possibilities.push(self.ast[*name].to_string());
             }
         }
         if at_beginning && "puts".starts_with(fragment) {
@@ -216,8 +218,7 @@ impl State {
                 println!("{}", val.to_string());
             }
             Stmt::Assn(name, expr) => {
-                self.scope
-                    .insert(name.to_string(), NamedItem::Expr(expr.clone()));
+                self.scope.insert(*name, NamedItem::Expr(expr.clone()));
             }
             Stmt::LitAssn(name, strs) => {
                 let choices = strs
@@ -228,7 +229,7 @@ impl State {
                     })
                     .collect();
                 self.scope
-                    .insert(name.to_string(), NamedItem::Expr(Expr::Chc(choices)));
+                    .insert(*name, NamedItem::Expr(Expr::Chc(choices)));
             }
             _ => bail!("unimplemented"),
         }
@@ -242,7 +243,7 @@ impl State {
                 let e = match self.scope.get(v) {
                     Some(NamedItem::Expr(e)) => e.clone(),
                     Some(NamedItem::Builtin(b)) => return Ok(Value::Builtin(b)),
-                    None => bail!("no such thing: {}", v),
+                    None => bail!("no such thing: {:?}", v),
                 };
                 self.eval(&e)
             }

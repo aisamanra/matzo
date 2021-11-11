@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::lexer::*;
 
-grammar<'input>;
+grammar<'input>(ast: &mut ASTArena);
 
 extern {
     type Location = usize;
@@ -47,11 +47,12 @@ pub Stmts: Vec<Stmt> = {
 pub Stmt: Stmt = {
     "puts" <Expr> => Stmt::Puts(<>),
     <Name> ":=" <Expr> => Stmt::Assn(<>),
-    <name:Name> "::=" <strs:(<Name>)*> => Stmt::LitAssn(name, strs),
+    <name:Name> "::=" <strs:(<"var">)*> =>
+        Stmt::LitAssn(name, strs.iter().map(|x| x.to_string()).collect()),
 };
 
-pub Name: String = {
-    "var" => <>.to_owned(),
+pub Name: Name = {
+    "var" => ast.add_string(<>),
 };
 
 pub Expr: Expr = {
@@ -118,5 +119,5 @@ pub Pat: Pat = {
 pub Literal: Literal = {
     "num" => Literal::Num(<>),
     "str" => Literal::Str(<>),
-    "atom" => Literal::Atom(<>.to_owned()),
+    "atom" => Literal::Atom(ast.add_string(<>)),
 };

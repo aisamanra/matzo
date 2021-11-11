@@ -16,9 +16,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 f
             };
 
+            let mut ast = matzo::ast::ASTArena::new();
             let src = std::fs::read_to_string(&exp)?;
             let tokens = lexer::tokens(&src);
-            if let Ok(ast) = grammar::StmtsParser::new().parse(tokens) {
+            if let Ok(ast) = grammar::StmtsParser::new().parse(&mut ast, tokens) {
                 let mut f = std::fs::File::create(exp_filename("parsed"))?;
                 writeln!(f, "{:#?}", ast)?;
             }

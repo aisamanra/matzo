@@ -25,6 +25,7 @@ lalrpop-util = { version = "*", features = ["lexer"] }
 logos = "*"
 rustyline = "*"
 ansi_term = "*"
+string-interner = "*"
 
 [build-dependencies]
 vergen = "*"

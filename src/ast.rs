@@ -1,4 +1,28 @@
-type Name = String;
+pub type Name = string_interner::DefaultSymbol;
+
+pub struct ASTArena {
+    strings: string_interner::StringInterner,
+}
+
+impl ASTArena {
+    pub fn new() -> ASTArena {
+        ASTArena {
+            strings: string_interner::StringInterner::new(),
+        }
+    }
+
+    pub fn add_string(&mut self, s: &str) -> Name {
+        self.strings.get_or_intern(s)
+    }
+}
+
+impl std::ops::Index<string_interner::DefaultSymbol> for ASTArena {
+    type Output = str;
+
+    fn index(&self, sf: string_interner::DefaultSymbol) -> &str {
+        self.strings.resolve(sf).unwrap()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -51,6 +75,6 @@ impl Choice {
 #[derive(Debug, Clone)]
 pub enum Literal {
     Str(String),
-    Atom(String),
+    Atom(Name),
     Num(i64),
 }

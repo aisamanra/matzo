@@ -30,9 +30,10 @@ fn assert_eq(x: &str, y: &str) {
 const TEST_TEMPLATE: &str = "
 #[test]
 fn test_%PREFIX%() {
+  let mut ast = crate::ast::ASTArena::new();
   let source = include_str!(\"%ROOT%/tests/%PREFIX%.matzo\");
   let lexer = lexer::tokens(source);
-  let ast = grammar::StmtsParser::new().parse(lexer);
+  let ast = grammar::StmtsParser::new().parse(&mut ast, lexer);
   assert!(ast.is_ok());
   let ast = ast.unwrap();
 

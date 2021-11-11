@@ -79,7 +79,9 @@ impl Hinter for Repl {
                 let autocompletes = self.state.borrow().autocomplete(so_far, str_start == 0);
                 if autocompletes.len() == 1 {
                     let known = autocompletes.first().unwrap();
-                    return known.strip_prefix(so_far).map(|s| ansi_term::Colour::Blue.dimmed().paint(s).to_string())
+                    return known
+                        .strip_prefix(so_far)
+                        .map(|s| ansi_term::Colour::Blue.dimmed().paint(s).to_string());
                 } else {
                     return None;
                 }
