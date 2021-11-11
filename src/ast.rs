@@ -1,7 +1,20 @@
+use std::fmt;
+
 pub type Name = string_interner::DefaultSymbol;
 
 pub struct ASTArena {
     strings: string_interner::StringInterner,
+}
+
+pub struct Debuggable<'a, T> {
+    arena: &'a ASTArena,
+    value: &'a T,
+}
+
+impl<'a> std::fmt::Debug for Debuggable<'a, Stmt> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.arena.show_stmt(self.value, f)
+    }
 }
 
 impl ASTArena {
@@ -13,6 +26,24 @@ impl ASTArena {
 
     pub fn add_string(&mut self, s: &str) -> Name {
         self.strings.get_or_intern(s)
+    }
+
+    pub fn show_stmt(&self, stmt: &Stmt, f: &mut fmt::Formatter) -> fmt::Result {
+        match stmt {
+            Stmt::Puts(expr) =>
+                writeln!(f, "{:?}", expr),
+            Stmt::Fix(name) =>
+                writeln!(f, "Fix({})", &self[*name]),
+            Stmt::Assn(name, expr) =>
+                writeln!(f, "Assn(\n  {},\n  {:?}\n)", &self[*name], expr),
+            Stmt::LitAssn(name, strs) => {
+                write!(f, "LitAssn({}, [ ", &self[*name])?;
+                for str in strs.iter() {
+                    write!(f, " {} ", str)?;
+                }
+                writeln!(f, "]")
+            }
+        }
     }
 }
 
@@ -30,6 +61,15 @@ pub enum Stmt {
     Fix(Name),
     Assn(Name, Expr),
     LitAssn(Name, Vec<String>),
+}
+
+impl Stmt {
+    pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Debuggable<'a, Stmt> {
+        Debuggable {
+            arena: ast,
+            value: self,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -1,58 +1,12 @@
-[
-    Assn(
-        "x",
-        Chc(
-            [
-                Choice {
-                    weight: None,
-                    value: Cat(
-                        [
-                            Lit(
-                                Num(
-                                    5,
-                                ),
-                            ),
-                        ],
-                    ),
-                },
-            ],
-        ),
-    ),
-    Assn(
-        "y",
-        Chc(
-            [
-                Choice {
-                    weight: None,
-                    value: Cat(
-                        [
-                            Lit(
-                                Atom(
-                                    "This",
-                                ),
-                            ),
-                        ],
-                    ),
-                },
-            ],
-        ),
-    ),
-    LitAssn(
-        "a",
-        [
-            "a",
-            "b",
-            "c",
-            "d",
-        ],
-    ),
-    LitAssn(
-        "fóo",
-        [
-            "á",
-            "þ",
-            "ç",
-            "đ",
-        ],
-    ),
-]
+Assn(
+  x,
+  Chc([Choice { weight: None, value: Cat([Lit(Num(5))]) }]))
+
+Assn(
+  y,
+  Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 3 }))]) }]))
+
+LitAssn(a, [  a  b  c  d ]
+
+LitAssn(fóo, [  á  þ  ç  đ ]
+

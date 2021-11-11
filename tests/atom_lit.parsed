@@ -1,20 +1,2 @@
-[
-    Puts(
-        Chc(
-            [
-                Choice {
-                    weight: None,
-                    value: Cat(
-                        [
-                            Lit(
-                                Atom(
-                                    "Foo",
-                                ),
-                            ),
-                        ],
-                    ),
-                },
-            ],
-        ),
-    ),
-]
+Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 1 }))]) }])
+
