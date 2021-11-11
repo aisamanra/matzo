@@ -131,13 +131,33 @@ Puts Chc(
 
 Puts Chc(
   Cat(
-    Fun([???])
+    Fun(
+      x =>
+        Chc(
+          Cat(
+            Var(x)
+          )
+        )
+    )
   )
 )
 
 Puts Chc(
   Cat(
-    Fun([???])
+    Fun(
+      True =>
+        Chc(
+          Cat(
+            Str("yes")
+          )
+        )
+      False =>
+        Chc(
+          Cat(
+            Str("no")
+          )
+        )
+    )
   )
 )
 

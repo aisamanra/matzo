@@ -57,6 +57,22 @@ impl ASTArena {
         Ok(())
     }
 
+    fn show_pat(&self, pat: &Pat, f: &mut fmt::Formatter) -> fmt::Result {
+        match pat {
+            Pat::Var(n) => write!(f, "{}", &self[*n]),
+            Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[*n]),
+            Pat::Lit(lit) => write!(f, "{:?}", lit),
+            Pat::Tup(tup) => {
+                write!(f, "Tup( ")?;
+                for t in tup {
+                    self.show_pat(&t, f)?;
+                    write!(f, " ")?;
+                }
+                write!(f, ")")
+            }
+        }
+    }
+
     fn show_expr(&self, expr: &Expr, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
         match expr {
             Expr::Var(v) => writeln!(f, "Var({})", &self[*v]),
@@ -119,12 +135,27 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Let(_, _, _) => {
-                writeln!(f, "Let([???])")
+            Expr::Let(name, expr, body) => {
+                writeln!(f, "Let({}", &self[*name])?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(expr, f, depth + 2)?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(body, f, depth + 2)?;
+                self.indent(f, depth)?;
+                writeln!(f, ")")
             }
 
-            Expr::Fun(_) => {
-                writeln!(f, "Fun([???])")
+            Expr::Fun(cases) => {
+                writeln!(f, "Fun(")?;
+                for case in cases {
+                    self.indent(f, depth + 2)?;
+                    self.show_pat(&case.pat, f)?;
+                    writeln!(f, " =>")?;
+                    self.indent(f, depth + 4)?;
+                    self.show_expr(&case.expr, f, depth + 4)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
             }
         }
     }
