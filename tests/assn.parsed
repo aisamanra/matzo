@@ -1,10 +1,14 @@
-Assn(
-  x,
-  Chc([Choice { weight: None, value: Cat([Lit(Num(5))]) }]))
+Assn x Chc(
+  Cat(
+    Num(5)
+  )
+)
 
-Assn(
-  y,
-  Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 3 }))]) }]))
+Assn y Chc(
+  Cat(
+    Lit(Atom(This))
+  )
+)
 
 LitAssn(a, [  a  b  c  d ]
 

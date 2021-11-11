@@ -33,12 +33,14 @@ fn test_%PREFIX%() {
   let mut ast = crate::ast::ASTArena::new();
   let source = include_str!(\"%ROOT%/tests/%PREFIX%.matzo\");
   let lexer = lexer::tokens(source);
-  let ast = grammar::StmtsParser::new().parse(&mut ast, lexer);
-  assert!(ast.is_ok());
-  let ast = ast.unwrap();
+  let stmts = grammar::StmtsParser::new().parse(&mut ast, lexer);
+  assert!(stmts.is_ok());
+  let stmts = stmts.unwrap();
 
   let mut buf = Vec::new();
-  writeln!(buf, \"{:#?}\", ast).unwrap();
+  for s in stmts {
+    writeln!(buf, \"{:?}\", s.show(&ast)).unwrap();
+  }
   assert_eq(
     std::str::from_utf8(&buf).unwrap().trim(),
     include_str!(\"%ROOT%/tests/%PREFIX%.parsed\").trim(),

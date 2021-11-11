@@ -30,12 +30,16 @@ impl ASTArena {
 
     pub fn show_stmt(&self, stmt: &Stmt, f: &mut fmt::Formatter) -> fmt::Result {
         match stmt {
-            Stmt::Puts(expr) =>
-                writeln!(f, "{:?}", expr),
+            Stmt::Puts(expr) => {
+                write!(f, "Puts ")?;
+                self.show_expr(&expr, f, 0)
+            }
             Stmt::Fix(name) =>
                 writeln!(f, "Fix({})", &self[*name]),
-            Stmt::Assn(name, expr) =>
-                writeln!(f, "Assn(\n  {},\n  {:?}\n)", &self[*name], expr),
+            Stmt::Assn(name, expr) => {
+                write!(f, "Assn {} ", &self[*name])?;
+                self.show_expr(&expr, f, 0)
+            }
             Stmt::LitAssn(name, strs) => {
                 write!(f, "LitAssn({}, [ ", &self[*name])?;
                 for str in strs.iter() {
@@ -43,6 +47,78 @@ impl ASTArena {
                 }
                 writeln!(f, "]")
             }
+        }
+    }
+
+    fn indent(&self, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
+        for _ in 0..depth {
+            write!(f, " ")?;
+        }
+        Ok(())
+    }
+
+    fn show_expr(&self, expr: &Expr, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
+        match expr {
+            Expr::Var(v) => writeln!(f, "Var({})", &self[*v]),
+            Expr::Lit(Literal::Atom(n)) => writeln!(f, "Lit(Atom({}))", &self[*n]),
+            Expr::Lit(lit) => writeln!(f, "{:?}", lit),
+            Expr::Range(from, to) => {
+                writeln!(f, "Range(")?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(from, f, depth + 2)?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(to, f, depth + 2)?;
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+
+            Expr::Ap(func, arg) => {
+                writeln!(f, "Ap(")?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(func, f, depth + 2)?;
+                self.indent(f, depth + 2)?;
+                self.show_expr(arg, f, depth + 2)?;
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+
+            Expr::Tup(expr) => {
+                writeln!(f, "Tup(")?;
+                for e in expr {
+                    self.indent(f, depth + 2)?;
+                    self.show_expr(e, f, depth + 2)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+
+            Expr::Cat(expr) => {
+                writeln!(f, "Cat(")?;
+                for e in expr {
+                    self.indent(f, depth + 2)?;
+                    self.show_expr(e, f, depth + 2)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+
+            Expr::Chc(expr) => {
+                writeln!(f, "Chc(")?;
+                for e in expr {
+                    if let Some(s) = e.weight {
+                        self.indent(f, depth + 2)?;
+                        writeln!(f, "{}:", s)?;
+                        self.indent(f, depth + 4)?;
+                        self.show_expr(&e.value, f, depth + 4)?;
+                    } else {
+                        self.indent(f, depth + 2)?;
+                        self.show_expr(&e.value, f, depth + 2)?;
+                    }
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+            _ => writeln!(f, "[???]"),
         }
     }
 }

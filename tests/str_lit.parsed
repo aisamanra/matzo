@@ -1,10 +1,35 @@
-Chc([Choice { weight: None, value: Cat([Lit(Str("foo")), Lit(Str("foo"))]) }])
+Puts Chc(
+  Cat(
+    Str("foo")
+    Str("foo")
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Lit(Str("foo bar baz")), Lit(Str("foo bar baz"))]) }])
+Puts Chc(
+  Cat(
+    Str("foo bar baz")
+    Str("foo bar baz")
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Lit(Str("won't you")), Lit(Str("quoth the raven \"nevermore\""))]) }])
+Puts Chc(
+  Cat(
+    Str("won't you")
+    Str("quoth the raven \"nevermore\"")
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Lit(Str("this\nthat")), Lit(Str("one\ntwo"))]) }])
+Puts Chc(
+  Cat(
+    Str("this\nthat")
+    Str("one\ntwo")
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Lit(Str("\n\t\r")), Lit(Str("\n\t\r"))]) }])
+Puts Chc(
+  Cat(
+    Str("\n\t\r")
+    Str("\n\t\r")
+  )
+)
 

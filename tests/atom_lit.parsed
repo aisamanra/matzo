@@ -1,2 +1,6 @@
-Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 1 }))]) }])
+Puts Chc(
+  Cat(
+    Lit(Atom(Foo))
+  )
+)
 

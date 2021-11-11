@@ -1,2 +1,6 @@
-Chc([Choice { weight: None, value: Cat([Lit(Num(55))]) }])
+Puts Chc(
+  Cat(
+    Num(55)
+  )
+)
 

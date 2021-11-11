@@ -1,26 +1,143 @@
-Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 1 })), Lit(Atom(SymbolU32 { value: 2 })), Lit(Atom(SymbolU32 { value: 3 }))]) }])
+Puts Chc(
+  Cat(
+    Lit(Atom(This))
+    Lit(Atom(That))
+    Lit(Atom(The-Other))
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 1 }))]) }, Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 2 }))]) }, Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 3 }))]) }])
+Puts Chc(
+  Cat(
+    Lit(Atom(This))
+  )
+  Cat(
+    Lit(Atom(That))
+  )
+  Cat(
+    Lit(Atom(The-Other))
+  )
+)
 
-Chc([Choice { weight: Some(5), value: Cat([Lit(Atom(SymbolU32 { value: 1 }))]) }, Choice { weight: None, value: Cat([Lit(Atom(SymbolU32 { value: 2 }))]) }])
+Puts Chc(
+  5:
+    Cat(
+      Lit(Atom(This))
+    )
+  Cat(
+    Lit(Atom(That))
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Ap(Ap(Var(SymbolU32 { value: 4 }), Var(SymbolU32 { value: 5 })), Var(SymbolU32 { value: 6 }))]) }])
+Puts Chc(
+  Cat(
+    Ap(
+      Ap(
+        Var(foo)
+        Var(bar)
+      )
+      Var(baz)
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Tup([Chc([Choice { weight: None, value: Cat([]) }])])]) }])
+Puts Chc(
+  Cat(
+    Tup(
+      Chc(
+        Cat(
+        )
+      )
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Tup([Chc([Choice { weight: None, value: Cat([Lit(Num(1))]) }])])]) }])
+Puts Chc(
+  Cat(
+    Tup(
+      Chc(
+        Cat(
+          Num(1)
+        )
+      )
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Tup([Chc([Choice { weight: None, value: Cat([Lit(Num(1))]) }]), Chc([Choice { weight: None, value: Cat([Lit(Num(2))]) }])])]) }])
+Puts Chc(
+  Cat(
+    Tup(
+      Chc(
+        Cat(
+          Num(1)
+        )
+      )
+      Chc(
+        Cat(
+          Num(2)
+        )
+      )
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Tup([Chc([Choice { weight: None, value: Cat([Lit(Num(1))]) }]), Chc([Choice { weight: None, value: Cat([Lit(Num(2))]) }]), Chc([Choice { weight: None, value: Cat([Lit(Num(3))]) }])])]) }])
+Puts Chc(
+  Cat(
+    Tup(
+      Chc(
+        Cat(
+          Num(1)
+        )
+      )
+      Chc(
+        Cat(
+          Num(2)
+        )
+      )
+      Chc(
+        Cat(
+          Num(3)
+        )
+      )
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Range(Lit(Num(0)), Lit(Num(20)))]) }])
+Puts Chc(
+  Cat(
+    Range(
+      Num(0)
+      Num(20)
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Range(Var(SymbolU32 { value: 7 }), Var(SymbolU32 { value: 8 }))]) }])
+Puts Chc(
+  Cat(
+    Range(
+      Var(x)
+      Var(y)
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Ap(Var(SymbolU32 { value: 9 }), Var(SymbolU32 { value: 7 }))]) }])
+Puts Chc(
+  Cat(
+    Ap(
+      Var(f)
+      Var(x)
+    )
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Fun([Case { pat: Var(SymbolU32 { value: 7 }), expr: Chc([Choice { weight: None, value: Cat([Var(SymbolU32 { value: 7 })]) }]) }])]) }])
+Puts Chc(
+  Cat(
+    [???]
+  )
+)
 
-Chc([Choice { weight: None, value: Cat([Fun([Case { pat: Lit(Atom(SymbolU32 { value: 10 })), expr: Chc([Choice { weight: None, value: Cat([Lit(Str("yes"))]) }]) }, Case { pat: Lit(Atom(SymbolU32 { value: 11 })), expr: Chc([Choice { weight: None, value: Cat([Lit(Str("no"))]) }]) }])]) }])
+Puts Chc(
+  Cat(
+    [???]
+  )
+)
 
