@@ -6,6 +6,12 @@ pub struct ASTArena {
     strings: string_interner::StringInterner,
 }
 
+impl Default for ASTArena {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct Debuggable<'a, T> {
     arena: &'a ASTArena,
     value: &'a T,
@@ -32,13 +38,13 @@ impl ASTArena {
         match stmt {
             Stmt::Puts(expr) => {
                 write!(f, "Puts ")?;
-                self.show_expr(&expr, f, 0)
+                self.show_expr(expr, f, 0)
             }
             Stmt::Fix(name) =>
                 writeln!(f, "Fix({})", &self[*name]),
             Stmt::Assn(name, expr) => {
                 write!(f, "Assn {} ", &self[*name])?;
-                self.show_expr(&expr, f, 0)
+                self.show_expr(expr, f, 0)
             }
             Stmt::LitAssn(name, strs) => {
                 write!(f, "LitAssn({}, [ ", &self[*name])?;
@@ -65,7 +71,7 @@ impl ASTArena {
             Pat::Tup(tup) => {
                 write!(f, "Tup( ")?;
                 for t in tup {
-                    self.show_pat(&t, f)?;
+                    self.show_pat(t, f)?;
                     write!(f, " ")?;
                 }
                 write!(f, ")")
