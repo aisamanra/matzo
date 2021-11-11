@@ -118,7 +118,14 @@ impl ASTArena {
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
-            _ => writeln!(f, "[???]"),
+
+            Expr::Let(_, _, _) => {
+                writeln!(f, "Let([???])")
+            }
+
+            Expr::Fun(_) => {
+                writeln!(f, "Fun([???])")
+            }
         }
     }
 }
@@ -153,13 +160,11 @@ pub enum Expr {
     Var(Name),
     Cat(Vec<Expr>),
     Chc(Vec<Choice>),
-    Rep(i64, Box<Expr>),
     Lit(Literal),
     Ap(Box<Expr>, Box<Expr>),
     Tup(Vec<Expr>),
     Let(Name, Box<Expr>, Box<Expr>),
     Fun(Vec<Case>),
-    Case(Box<Expr>, Vec<Case>),
     Range(Box<Expr>, Box<Expr>),
 }
 

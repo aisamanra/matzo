@@ -131,13 +131,13 @@ Puts Chc(
 
 Puts Chc(
   Cat(
-    [???]
+    Fun([???])
   )
 )
 
 Puts Chc(
   Cat(
-    [???]
+    Fun([???])
   )
 )
 
