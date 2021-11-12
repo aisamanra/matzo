@@ -12,17 +12,6 @@ impl Default for ASTArena {
     }
 }
 
-pub struct Debuggable<'a, T> {
-    arena: &'a ASTArena,
-    value: &'a T,
-}
-
-impl<'a> std::fmt::Debug for Debuggable<'a, Stmt> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.arena.show_stmt(self.value, f)
-    }
-}
-
 impl ASTArena {
     pub fn new() -> ASTArena {
         ASTArena {
@@ -184,23 +173,50 @@ impl std::ops::Index<string_interner::DefaultSymbol> for ASTArena {
     }
 }
 
+/// A `Printable` struct is a bundle of another value and an
+/// `ASTArena`, which allows us to fetch the various indices and
+/// dereference the interned strings.
+pub struct Printable<'a, T> {
+    arena: &'a ASTArena,
+    value: &'a T,
+}
+
+impl<'a> std::fmt::Debug for Printable<'a, Stmt> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.arena.show_stmt(self.value, f)
+    }
+}
+
+impl<'a> std::fmt::Debug for Printable<'a, Expr> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.arena.show_expr(self.value, f, 0)
+    }
+}
+
+/// A top-level Matzo statement
 #[derive(Debug, Clone)]
 pub enum Stmt {
+    /// evaluate and print the value of an expression
     Puts(Expr),
+    /// replace a named item with the forced version of that item
     Fix(Name),
+    /// assign a value to a name which may or may not be forced
     Assn(bool, Name, Expr),
+    /// assign one of a set of strings to a name, which may or may not
+    /// be forced
     LitAssn(bool, Name, Vec<String>),
 }
 
 impl Stmt {
-    pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Debuggable<'a, Stmt> {
-        Debuggable {
+    pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Printable<'a, Stmt> {
+        Printable {
             arena: ast,
             value: self,
         }
     }
 }
 
+/// A Matzo expression
 #[derive(Debug, Clone)]
 pub enum Expr {
     Var(Name),
@@ -214,12 +230,14 @@ pub enum Expr {
     Range(Box<Expr>, Box<Expr>),
 }
 
+/// A single case in an anonymous function or `case` statement
 #[derive(Debug, Clone)]
 pub struct Case {
     pub pat: Pat,
     pub expr: Expr,
 }
 
+/// A pattern, e.g. in an anonymous function or `case` statement
 #[derive(Debug, Clone)]
 pub enum Pat {
     Var(Name),
@@ -227,6 +245,8 @@ pub enum Pat {
     Tup(Vec<Pat>),
 }
 
+/// A single element in a choice, with an optional weight (which
+/// defaults to 1) and a value
 #[derive(Debug, Clone)]
 pub struct Choice {
     pub weight: Option<i64>,
@@ -234,11 +254,13 @@ pub struct Choice {
 }
 
 impl Choice {
+    /// Fetch a weight from a `Choice`, defaulting to 1
     pub fn weight(&self) -> i64 {
         self.weight.unwrap_or(1)
     }
 }
 
+/// An atomic literal: a string, a number, or an atom
 #[derive(Debug, Clone)]
 pub enum Literal {
     Str(String),
