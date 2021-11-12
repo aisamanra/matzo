@@ -59,8 +59,12 @@ pub Name: Name = {
 
 pub Expr: Expr = {
     <mut ts:(<Choice> "|")*> <t:Choice> => {
-        ts.push(t);
-        Expr::Chc(ts)
+        if ts.len() == 0 {
+            t.value
+        } else {
+            ts.push(t);
+            Expr::Chc(ts)
+        }
     }
 };
 
@@ -76,7 +80,13 @@ pub Choice: Choice = {
 };
 
 pub Term: Expr = {
-    (<Branch>)* => Expr::Cat(<>),
+    <mut bs:(<Branch>)*> => {
+        if bs.len() == 1 {
+            bs.pop().unwrap()
+        } else {
+            Expr::Cat(<>)
+        }
+    }
 };
 
 pub Branch: Expr = {
