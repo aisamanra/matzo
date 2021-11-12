@@ -23,6 +23,10 @@ impl Completer for Repl {
         pos: usize,
         _ctx: &rustyline::Context<'_>,
     ) -> rustyline::Result<(usize, Vec<String>)> {
+        if pos == 0 {
+            return Ok((pos, Vec::new()));
+        }
+
         if let Some(c) = line.chars().nth(pos - 1) {
             if c.is_alphabetic() {
                 // this means we're looking at maybe something

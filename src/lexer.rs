@@ -81,6 +81,9 @@ pub enum Token<'a> {
     #[token("in")]
     In,
 
+    #[token("fix")]
+    Fix,
+
     #[regex(r"\p{Ll}(\pL|[0-9_-])*")]
     Var(&'a str),
 

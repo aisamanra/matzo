@@ -8,7 +8,7 @@ macro_rules! bail {
     ($fmt:expr, $($e:expr),*) => { return Err(Error { message: format!($fmt, $($e),*), }) }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Lit(Literal),
     Tup(Vec<Value>),
@@ -138,6 +138,7 @@ impl fmt::Debug for BuiltinFunc {
 
 enum NamedItem {
     Expr(Expr),
+    Value(Value),
     Builtin(&'static BuiltinFunc),
 }
 
@@ -217,10 +218,37 @@ impl State {
                 let val = self.eval(expr)?;
                 println!("{}", val.to_string());
             }
-            Stmt::Assn(name, expr) => {
-                self.scope.insert(*name, NamedItem::Expr(expr.clone()));
+
+            Stmt::Fix(name) => {
+                let expr = match self.scope.get(name) {
+                    None => bail!("no such thing: {:?}", name),
+                    Some(NamedItem::Expr(e)) => e.clone(),
+                    // if it's not an expr, then our work here is done
+                    _ => return Ok(()),
+                };
+                let val = self.eval(&expr)?;
+                self.scope.insert(*name, NamedItem::Value(val));
             }
-            Stmt::LitAssn(name, strs) => {
+
+            Stmt::Assn(fixed, name, expr) => {
+                if *fixed {
+                    let val = self.eval(expr)?;
+                    self.scope.insert(*name, NamedItem::Value(val));
+                } else {
+                    self.scope.insert(*name, NamedItem::Expr(expr.clone()));
+                }
+            }
+
+            Stmt::LitAssn(fixed, name, strs) => {
+                if *fixed {
+                    let choice = &strs[self.rand.gen_range(0..strs.len())];
+                    self.scope.insert(
+                        *name,
+                        NamedItem::Value(Value::Lit(Literal::Str(choice.clone()))),
+                    );
+                    return Ok(());
+                }
+
                 let choices = strs
                     .iter()
                     .map(|s| Choice {
@@ -231,7 +259,6 @@ impl State {
                 self.scope
                     .insert(*name, NamedItem::Expr(Expr::Chc(choices)));
             }
-            _ => bail!("unimplemented"),
         }
         Ok(())
     }
@@ -242,6 +269,7 @@ impl State {
             Expr::Var(v) => {
                 let e = match self.scope.get(v) {
                     Some(NamedItem::Expr(e)) => e.clone(),
+                    Some(NamedItem::Value(v)) => return Ok(v.clone()),
                     Some(NamedItem::Builtin(b)) => return Ok(Value::Builtin(b)),
                     None => bail!("no such thing: {:?}", v),
                 };

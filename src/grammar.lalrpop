@@ -27,6 +27,7 @@ extern {
         "case" => Token::Case,
         "let" => Token::Let,
         "in" => Token::In,
+        "fix" => Token::Fix,
         "var" => Token::Var(<&'input str>),
         "atom" => Token::Atom(<&'input str>),
         "num" => Token::Num(<i64>),
@@ -46,9 +47,10 @@ pub Stmts: Vec<Stmt> = {
 
 pub Stmt: Stmt = {
     "puts" <Expr> => Stmt::Puts(<>),
-    <Name> ":=" <Expr> => Stmt::Assn(<>),
-    <name:Name> "::=" <strs:(<"var">)*> =>
-        Stmt::LitAssn(name, strs.iter().map(|x| x.to_string()).collect()),
+    <fixed:"fix"?> <name:Name> ":=" <expr:Expr> => Stmt::Assn(fixed.is_some(), name, expr),
+    <fixed:"fix"?> <name:Name> "::=" <strs:(<"var">)*> =>
+        Stmt::LitAssn(fixed.is_some(), name, strs.iter().map(|x| x.to_string()).collect()),
+    "fix" <Name> => Stmt::Fix(<>),
 };
 
 pub Name: Name = {

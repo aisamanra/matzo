@@ -40,14 +40,23 @@ impl ASTArena {
                 write!(f, "Puts ")?;
                 self.show_expr(expr, f, 0)
             }
-            Stmt::Fix(name) =>
-                writeln!(f, "Fix({})", &self[*name]),
-            Stmt::Assn(name, expr) => {
-                write!(f, "Assn {} ", &self[*name])?;
+            Stmt::Fix(name) => writeln!(f, "Fix {}", &self[*name]),
+            Stmt::Assn(fixed, name, expr) => {
+                write!(
+                    f,
+                    "Assn {} {} ",
+                    if *fixed { "fixed" } else { "" },
+                    &self[*name]
+                )?;
                 self.show_expr(expr, f, 0)
             }
-            Stmt::LitAssn(name, strs) => {
-                write!(f, "LitAssn({}, [ ", &self[*name])?;
+            Stmt::LitAssn(fixed, name, strs) => {
+                write!(
+                    f,
+                    "LitAssn {} {}, [ ",
+                    if *fixed { "fixed" } else { "" },
+                    &self[*name],
+                )?;
                 for str in strs.iter() {
                     write!(f, " {} ", str)?;
                 }
@@ -179,8 +188,8 @@ impl std::ops::Index<string_interner::DefaultSymbol> for ASTArena {
 pub enum Stmt {
     Puts(Expr),
     Fix(Name),
-    Assn(Name, Expr),
-    LitAssn(Name, Vec<String>),
+    Assn(bool, Name, Expr),
+    LitAssn(bool, Name, Vec<String>),
 }
 
 impl Stmt {
