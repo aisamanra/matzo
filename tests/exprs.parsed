@@ -1,163 +1,73 @@
-Puts Chc(
-  Cat(
-    Lit(Atom(This))
-    Lit(Atom(That))
-    Lit(Atom(The-Other))
-  )
+Puts Cat(
+  Lit(Atom(This))
+  Lit(Atom(That))
+  Lit(Atom(The-Other))
 )
 
 Puts Chc(
-  Cat(
-    Lit(Atom(This))
-  )
-  Cat(
-    Lit(Atom(That))
-  )
-  Cat(
-    Lit(Atom(The-Other))
-  )
+  Lit(Atom(This))
+  Lit(Atom(That))
+  Lit(Atom(The-Other))
 )
 
 Puts Chc(
   5:
-    Cat(
-      Lit(Atom(This))
-    )
+    Lit(Atom(This))
+  Lit(Atom(That))
+)
+
+Puts Ap(
+  Ap(
+    Var(foo)
+    Var(bar)
+  )
+  Var(baz)
+)
+
+Puts Tup(
   Cat(
-    Lit(Atom(That))
   )
 )
 
-Puts Chc(
-  Cat(
-    Ap(
-      Ap(
-        Var(foo)
-        Var(bar)
-      )
-      Var(baz)
-    )
-  )
+Puts Tup(
+  Num(1)
 )
 
-Puts Chc(
-  Cat(
-    Tup(
-      Chc(
-        Cat(
-        )
-      )
-    )
-  )
+Puts Tup(
+  Num(1)
+  Num(2)
 )
 
-Puts Chc(
-  Cat(
-    Tup(
-      Chc(
-        Cat(
-          Num(1)
-        )
-      )
-    )
-  )
+Puts Tup(
+  Num(1)
+  Num(2)
+  Num(3)
 )
 
-Puts Chc(
-  Cat(
-    Tup(
-      Chc(
-        Cat(
-          Num(1)
-        )
-      )
-      Chc(
-        Cat(
-          Num(2)
-        )
-      )
-    )
-  )
+Puts Range(
+  Num(0)
+  Num(20)
 )
 
-Puts Chc(
-  Cat(
-    Tup(
-      Chc(
-        Cat(
-          Num(1)
-        )
-      )
-      Chc(
-        Cat(
-          Num(2)
-        )
-      )
-      Chc(
-        Cat(
-          Num(3)
-        )
-      )
-    )
-  )
+Puts Range(
+  Var(x)
+  Var(y)
 )
 
-Puts Chc(
-  Cat(
-    Range(
-      Num(0)
-      Num(20)
-    )
-  )
+Puts Ap(
+  Var(f)
+  Var(x)
 )
 
-Puts Chc(
-  Cat(
-    Range(
-      Var(x)
-      Var(y)
-    )
-  )
+Puts Fun(
+  x =>
+    Var(x)
 )
 
-Puts Chc(
-  Cat(
-    Ap(
-      Var(f)
-      Var(x)
-    )
-  )
-)
-
-Puts Chc(
-  Cat(
-    Fun(
-      x =>
-        Chc(
-          Cat(
-            Var(x)
-          )
-        )
-    )
-  )
-)
-
-Puts Chc(
-  Cat(
-    Fun(
-      True =>
-        Chc(
-          Cat(
-            Str("yes")
-          )
-        )
-      False =>
-        Chc(
-          Cat(
-            Str("no")
-          )
-        )
-    )
-  )
+Puts Fun(
+  True =>
+    Str("yes")
+  False =>
+    Str("no")
 )
 

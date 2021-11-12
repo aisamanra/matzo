@@ -1,6 +1,2 @@
-Puts Chc(
-  Cat(
-    Lit(Atom(Foo))
-  )
-)
+Puts Lit(Atom(Foo))
 

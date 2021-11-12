@@ -1,14 +1,6 @@
-Assn  x Chc(
-  Cat(
-    Num(5)
-  )
-)
+Assn  x Num(5)
 
-Assn  y Chc(
-  Cat(
-    Lit(Atom(This))
-  )
-)
+Assn  y Lit(Atom(This))
 
 LitAssn  a, [  a  b  c  d ]
 

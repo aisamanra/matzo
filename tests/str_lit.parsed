@@ -1,35 +1,25 @@
-Puts Chc(
-  Cat(
-    Str("foo")
-    Str("foo")
-  )
+Puts Cat(
+  Str("foo")
+  Str("foo")
 )
 
-Puts Chc(
-  Cat(
-    Str("foo bar baz")
-    Str("foo bar baz")
-  )
+Puts Cat(
+  Str("foo bar baz")
+  Str("foo bar baz")
 )
 
-Puts Chc(
-  Cat(
-    Str("won't you")
-    Str("quoth the raven \"nevermore\"")
-  )
+Puts Cat(
+  Str("won't you")
+  Str("quoth the raven \"nevermore\"")
 )
 
-Puts Chc(
-  Cat(
-    Str("this\nthat")
-    Str("one\ntwo")
-  )
+Puts Cat(
+  Str("this\nthat")
+  Str("one\ntwo")
 )
 
-Puts Chc(
-  Cat(
-    Str("\n\t\r")
-    Str("\n\t\r")
-  )
+Puts Cat(
+  Str("\n\t\r")
+  Str("\n\t\r")
 )
 

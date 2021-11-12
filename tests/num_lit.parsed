@@ -1,6 +1,2 @@
-Puts Chc(
-  Cat(
-    Num(55)
-  )
-)
+Puts Num(55)
 
