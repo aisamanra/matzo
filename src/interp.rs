@@ -13,6 +13,7 @@ pub enum Value {
     Lit(Literal),
     Tup(Vec<Value>),
     Builtin(&'static BuiltinFunc),
+    Nil,
 }
 
 impl Value {
@@ -32,6 +33,7 @@ impl Value {
 
     fn with_str<U>(&self, f: impl FnOnce(&str) -> U) -> U {
         match self {
+            Value::Nil => f(""),
             Value::Lit(Literal::Str(s)) => f(s),
             Value::Lit(Literal::Atom(s)) => f(&format!("{:?}", s)),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
@@ -266,6 +268,7 @@ impl State {
     fn eval(&mut self, expr: &Expr) -> Result<Value, Error> {
         match expr {
             Expr::Lit(l) => Ok(Value::Lit(l.clone())),
+            Expr::Nil => Ok(Value::Nil),
             Expr::Var(v) => {
                 let e = match self.scope.get(v) {
                     Some(NamedItem::Expr(e)) => e.clone(),

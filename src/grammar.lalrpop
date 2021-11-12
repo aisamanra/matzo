@@ -81,10 +81,10 @@ pub Choice: Choice = {
 
 pub Term: Expr = {
     <mut bs:(<Branch>)*> => {
-        if bs.len() == 1 {
-            bs.pop().unwrap()
-        } else {
-            Expr::Cat(<>)
+        match bs.len() {
+            0 => Expr::Nil,
+            1 => bs.pop().unwrap(),
+            _ => Expr::Cat(<>),
         }
     }
 };
@@ -103,8 +103,12 @@ pub Leaf: Expr = {
     <Literal> => Expr::Lit(<>),
     <Name> => Expr::Var(<>),
     "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
-        es.push(e);
-        Expr::Tup(es)
+        if es.len() == 0 && e == Expr::Nil {
+            Expr::Tup(Vec::new())
+        } else {
+            es.push(e);
+            Expr::Tup(es)
+        }
     },
     "let" <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
         Expr::Let(name, Box::new(e1), Box::new(e2)),

@@ -79,6 +79,7 @@ impl ASTArena {
 
     fn show_expr(&self, expr: &Expr, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
         match expr {
+            Expr::Nil => writeln!(f, "Nil"),
             Expr::Var(v) => writeln!(f, "Var({})", &self[*v]),
             Expr::Lit(Literal::Atom(n)) => writeln!(f, "Lit(Atom({}))", &self[*n]),
             Expr::Lit(lit) => writeln!(f, "{:?}", lit),
@@ -194,7 +195,7 @@ impl<'a> std::fmt::Debug for Printable<'a, Expr> {
 }
 
 /// A top-level Matzo statement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     /// evaluate and print the value of an expression
     Puts(Expr),
@@ -217,7 +218,7 @@ impl Stmt {
 }
 
 /// A Matzo expression
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Var(Name),
     Cat(Vec<Expr>),
@@ -228,17 +229,18 @@ pub enum Expr {
     Let(Name, Box<Expr>, Box<Expr>),
     Fun(Vec<Case>),
     Range(Box<Expr>, Box<Expr>),
+    Nil,
 }
 
 /// A single case in an anonymous function or `case` statement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Case {
     pub pat: Pat,
     pub expr: Expr,
 }
 
 /// A pattern, e.g. in an anonymous function or `case` statement
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat {
     Var(Name),
     Lit(Literal),
@@ -247,7 +249,7 @@ pub enum Pat {
 
 /// A single element in a choice, with an optional weight (which
 /// defaults to 1) and a value
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Choice {
     pub weight: Option<i64>,
     pub value: Expr,
@@ -261,7 +263,7 @@ impl Choice {
 }
 
 /// An atomic literal: a string, a number, or an atom
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
     Str(String),
     Atom(Name),
