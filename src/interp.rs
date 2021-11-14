@@ -270,6 +270,7 @@ impl State {
         match stmt {
             Stmt::Puts(expr) => {
                 let val = self.eval(*expr, &None)?;
+                let val = self.force(val)?;
                 println!("{}", val.to_string());
             }
 
@@ -321,6 +322,21 @@ impl State {
             }
         }
         Ok(())
+    }
+
+    fn force(&self, val: Value) -> Result<Value, Error> {
+        match val {
+            Value::Tup(values) => {
+                Ok(Value::Tup(values.into_iter().map(|t| {
+                    if let Thunk::Expr(e, env) = t {
+                        Ok(Thunk::Value(self.eval(e, &env)?))
+                    } else {
+                        Ok(t)
+                    }
+                }).collect::<Result<Vec<Thunk>, Error>>()?))
+            }
+            _ => Ok(val),
+        }
     }
 
     fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
