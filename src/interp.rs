@@ -176,7 +176,9 @@ impl State {
         };
         for builtin in BUILTINS {
             let sym = s.ast.borrow_mut().add_string(builtin.name);
-            s.scope.borrow_mut().insert(sym, NamedItem::Builtin(builtin));
+            s.scope
+                .borrow_mut()
+                .insert(sym, NamedItem::Builtin(builtin));
         }
         s
     }
@@ -250,7 +252,9 @@ impl State {
                     let val = self.eval(*expr)?;
                     self.scope.borrow_mut().insert(*name, NamedItem::Value(val));
                 } else {
-                    self.scope.borrow_mut().insert(*name, NamedItem::Expr(expr.clone()));
+                    self.scope
+                        .borrow_mut()
+                        .insert(*name, NamedItem::Expr(expr.clone()));
                 }
             }
 
@@ -268,7 +272,10 @@ impl State {
                     .iter()
                     .map(|s| Choice {
                         weight: None,
-                        value: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(s.clone()))),
+                        value: self
+                            .ast
+                            .borrow_mut()
+                            .add_expr(Expr::Lit(Literal::Str(s.clone()))),
                     })
                     .collect();
                 let choices = self.ast.borrow_mut().add_expr(Expr::Chc(choices));
@@ -326,7 +333,9 @@ impl State {
             Expr::Range(from, to) => {
                 let from = self.eval(*from)?.as_num()?;
                 let to = self.eval(*to)?.as_num()?;
-                Ok(Value::Lit(Literal::Num(self.rand.borrow_mut().gen_range(from..=to))))
+                Ok(Value::Lit(Literal::Num(
+                    self.rand.borrow_mut().gen_range(from..=to),
+                )))
             }
             _ => bail!("unimplemented: {:?}", expr),
         }
