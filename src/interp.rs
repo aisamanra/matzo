@@ -408,25 +408,68 @@ impl State {
                     Expr::Fun(cases) => cases,
                     _ => bail!("INVARIANT FAILED"),
                 };
-                if cases.len() != 1 {
-                    bail!("UNIMPLEMENTED: more than one case");
+
+                // this is mutable because we only want to force
+                // it once per pattern.
+                let mut scrut = Thunk::Expr(*val, env.clone());
+                for c in cases {
+                    let mut bindings = Vec::new();
+                    if !self.match_pat(&c.pat, &mut scrut, &mut bindings)? {
+                        continue;
+                    }
+
+                    let mut new_scope = HashMap::new();
+                    for (name, binding) in bindings {
+                        new_scope.insert(name, binding);
+                    }
+
+                    let new_scope = Rc::new(Scope {
+                        vars: new_scope,
+                        parent: closure.scope,
+                    });
+                    return self.eval(c.expr, &Some(new_scope));
                 }
-                let case = cases.first().unwrap();
-                let var = if let Pat::Var(v) = case.pat {
-                    v
-                } else {
-                    bail!("UNIMPLEMENTED: patterns");
-                };
-                let mut new_scope = HashMap::new();
-                new_scope.insert(var, Thunk::Expr(*val, env.clone()));
-                let new_scope = Rc::new(Scope {
-                    vars: new_scope,
-                    parent: closure.scope,
-                });
-                self.eval(case.expr, &Some(new_scope))
+
+                bail!("No pattern in {:?} matched {:?}", cases, scrut);
             }
 
             _ => bail!("unimplemented: {:?}", expr),
+        }
+    }
+
+    fn match_pat(&self, pat: &Pat, scrut: &mut Thunk, bindings: &mut Vec<(Name, Thunk)>) -> Result<bool, Error> {
+        if let Pat::Var(v) = pat {
+            bindings.push((*v, scrut.clone()));
+            return Ok(true);
+        }
+        // if it's not just a variable, then we'll need to make sure
+        // we've evaluated `scrut` at least one level from here
+        if let Thunk::Expr(e, env) = scrut {
+            *scrut = Thunk::Value(self.eval(*e, &env)?)
+        };
+
+        // now we can match deeper patterns, at least a little
+        match pat {
+            Pat::Lit(lhs) => if let Thunk::Value(Value::Lit(rhs)) = scrut {
+                Ok(lhs == rhs)
+            } else {
+                Ok(false)
+            }
+            Pat::Tup(pats) => if let Thunk::Value(Value::Tup(thunks)) = scrut {
+                if pats.len() != thunks.len() {
+                    return Ok(false)
+                }
+
+                for (p, t) in pats.iter().zip(thunks) {
+                    if !self.match_pat(p, t, bindings)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+            _ => Ok(false),
         }
     }
 
