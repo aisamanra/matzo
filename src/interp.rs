@@ -13,7 +13,7 @@ macro_rules! bail {
 #[derive(Debug, Clone)]
 pub enum Value {
     Lit(Literal),
-    Tup(Vec<Value>),
+    Tup(Vec<Thunk>),
     Builtin(&'static BuiltinFunc),
     Closure(Closure),
     Nil,
@@ -47,7 +47,12 @@ impl Value {
                     if i > 0 {
                         buf.push_str(", ");
                     }
-                    buf.push_str(&val.to_string());
+                    match val {
+                        Thunk::Value(v) => buf.push_str(&v.to_string()),
+                        Thunk::Expr(..) => buf.push_str("#<unevaluated>"),
+                        Thunk::Builtin(func) =>
+                            buf.push_str(&format!("#<builtin {}>", func.name)),
+                    }
                 }
                 buf.push('>');
                 f(&buf)
@@ -151,8 +156,8 @@ impl fmt::Debug for BuiltinFunc {
 }
 
 #[derive(Debug, Clone)]
-enum NamedItem {
-    Expr(ExprRef),
+pub enum Thunk {
+    Expr(ExprRef, Env),
     Value(Value),
     Builtin(&'static BuiltinFunc),
 }
@@ -160,7 +165,7 @@ enum NamedItem {
 type Env = Option<Rc<Scope>>;
 #[derive(Debug)]
 pub struct Scope {
-    vars: HashMap<Name, NamedItem>,
+    vars: HashMap<Name, Thunk>,
     parent: Env,
 }
 
@@ -172,7 +177,7 @@ pub struct Closure {
 
 pub struct State {
     ast: RefCell<ASTArena>,
-    root_scope: RefCell<HashMap<Name, NamedItem>>,
+    root_scope: RefCell<HashMap<Name, Thunk>>,
     rand: RefCell<rand::rngs::ThreadRng>,
     parser: crate::grammar::StmtsParser,
 }
@@ -195,12 +200,12 @@ impl State {
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
-                .insert(sym, NamedItem::Builtin(builtin));
+                .insert(sym, Thunk::Builtin(builtin));
         }
         s
     }
 
-    fn lookup(&self, env: &Env, name: Name) -> Result<NamedItem, Error> {
+    fn lookup(&self, env: &Env, name: Name) -> Result<Thunk, Error> {
         if let Some(env) = env {
             if let Some(ne) = env.vars.get(&name) {
                 Ok(ne.clone())
@@ -269,23 +274,23 @@ impl State {
             }
 
             Stmt::Fix(name) => {
-                let expr = match self.lookup(&None, *name)? {
-                    NamedItem::Expr(e) => e,
+                let (expr, env) = match self.lookup(&None, *name)? {
+                    Thunk::Expr(e, env) => (e, env),
                     // if it's not an expr, then our work here is done
                     _ => return Ok(()),
                 };
-                let val = self.eval(expr, &None)?;
-                self.root_scope.borrow_mut().insert(*name, NamedItem::Value(val));
+                let val = self.eval(expr, &env)?;
+                self.root_scope.borrow_mut().insert(*name, Thunk::Value(val));
             }
 
             Stmt::Assn(fixed, name, expr) => {
                 if *fixed {
                     let val = self.eval(*expr, &None)?;
-                    self.root_scope.borrow_mut().insert(*name, NamedItem::Value(val));
+                    self.root_scope.borrow_mut().insert(*name, Thunk::Value(val));
                 } else {
                     self.root_scope
                         .borrow_mut()
-                        .insert(*name, NamedItem::Expr(*expr));
+                        .insert(*name, Thunk::Expr(*expr, None));
                 }
             }
 
@@ -294,7 +299,7 @@ impl State {
                     let choice = &strs[self.rand.borrow_mut().gen_range(0..strs.len())];
                     self.root_scope.borrow_mut().insert(
                         *name,
-                        NamedItem::Value(Value::Lit(Literal::Str(choice.clone()))),
+                        Thunk::Value(Value::Lit(Literal::Str(choice.clone()))),
                     );
                     return Ok(());
                 }
@@ -312,7 +317,7 @@ impl State {
                 let choices = self.ast.borrow_mut().add_expr(Expr::Chc(choices));
                 self.root_scope
                     .borrow_mut()
-                    .insert(*name, NamedItem::Expr(choices));
+                    .insert(*name, Thunk::Expr(choices, None));
             }
         }
         Ok(())
@@ -325,12 +330,12 @@ impl State {
             Expr::Nil => Ok(Value::Nil),
 
             Expr::Var(v) => {
-                let e = match self.lookup(env, *v)? {
-                    NamedItem::Expr(e) => e,
-                    NamedItem::Value(v) => return Ok(v.clone()),
-                    NamedItem::Builtin(b) => return Ok(Value::Builtin(b)),
+                let (e, env) = match self.lookup(env, *v)? {
+                    Thunk::Expr(e, env) => (e, env),
+                    Thunk::Value(v) => return Ok(v.clone()),
+                    Thunk::Builtin(b) => return Ok(Value::Builtin(b)),
                 };
-                self.eval(e, env)
+                self.eval(e, &env)
             }
 
             Expr::Cat(cat) => {
@@ -357,8 +362,8 @@ impl State {
             Expr::Tup(values) => Ok(Value::Tup(
                 values
                     .iter()
-                    .map(|v| self.eval(*v, env))
-                    .collect::<Result<Vec<Value>, Error>>()?,
+                    .map(|v| Thunk::Expr(*v, env.clone()))
+                    .collect::<Vec<Thunk>>()
             )),
 
             Expr::Range(from, to) => {
@@ -397,7 +402,7 @@ impl State {
                     bail!("UNIMPLEMENTED: patterns");
                 };
                 let mut new_scope = HashMap::new();
-                new_scope.insert(var, NamedItem::Expr(*val));
+                new_scope.insert(var, Thunk::Expr(*val, env.clone()));
                 let new_scope = Rc::new(Scope {
                     vars: new_scope,
                     parent: closure.scope,
