@@ -166,7 +166,7 @@ pub struct Scope {
 
 #[derive(Debug, Clone)]
 pub struct Closure {
-    expr: ExprRef,
+    func: ExprRef,
     scope: Env,
 }
 
@@ -318,11 +318,12 @@ impl State {
         Ok(())
     }
 
-    fn eval(&self, expr: ExprRef, env: &Env) -> Result<Value, Error> {
-        let expr = &self.ast.borrow()[expr];
+    fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
+        let expr = &self.ast.borrow()[expr_ref];
         match expr {
             Expr::Lit(l) => Ok(Value::Lit(l.clone())),
             Expr::Nil => Ok(Value::Nil),
+
             Expr::Var(v) => {
                 let e = match self.lookup(env, *v)? {
                     NamedItem::Expr(e) => e,
@@ -331,6 +332,7 @@ impl State {
                 };
                 self.eval(e, env)
             }
+
             Expr::Cat(cat) => {
                 if cat.len() == 1 {
                     self.eval(cat[0], env)
@@ -343,6 +345,7 @@ impl State {
                     Ok(Value::Lit(Literal::Str(buf)))
                 }
             }
+
             Expr::Chc(choices) => {
                 if choices.len() == 1 {
                     self.eval(choices[0].value, env)
@@ -350,16 +353,14 @@ impl State {
                     self.choose(&choices, env)
                 }
             }
+
             Expr::Tup(values) => Ok(Value::Tup(
                 values
                     .iter()
                     .map(|v| self.eval(*v, env))
                     .collect::<Result<Vec<Value>, Error>>()?,
             )),
-            Expr::Ap(fun, arg) => match self.eval(*fun, env)? {
-                Value::Builtin(builtin) => (builtin.callback)(self, *arg, env),
-                _ => bail!("bad function: {:?}", fun),
-            },
+
             Expr::Range(from, to) => {
                 let from = self.eval(*from, env)?.as_num()?;
                 let to = self.eval(*to, env)?.as_num()?;
@@ -367,6 +368,43 @@ impl State {
                     self.rand.borrow_mut().gen_range(from..=to),
                 )))
             }
+
+            Expr::Fun(_) => {
+                Ok(Value::Closure(Closure {
+                    func: expr_ref,
+                    scope: env.clone(),
+                }))
+            }
+
+            Expr::Ap(func, val) => {
+                let closure = match self.eval(*func, env)? {
+                    Value::Closure(c) => c,
+                    Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
+                    _ => bail!("Bad function: {:?}", func),
+                };
+                let ast = self.ast.borrow();
+                let cases = match &ast[closure.func] {
+                    Expr::Fun(cases) => cases,
+                    _ => bail!("INVARIANT FAILED"),
+                };
+                if cases.len() != 1 {
+                    bail!("UNIMPLEMENTED: more than one case");
+                }
+                let case = cases.first().unwrap();
+                let var = if let Pat::Var(v) = case.pat {
+                    v
+                } else {
+                    bail!("UNIMPLEMENTED: patterns");
+                };
+                let mut new_scope = HashMap::new();
+                new_scope.insert(var, NamedItem::Expr(*val));
+                let new_scope = Rc::new(Scope {
+                    vars: new_scope,
+                    parent: closure.scope,
+                });
+                self.eval(case.expr, &Some(new_scope))
+            }
+
             _ => bail!("unimplemented: {:?}", expr),
         }
     }
