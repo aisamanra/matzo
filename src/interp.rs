@@ -254,7 +254,7 @@ impl State {
                 } else {
                     self.scope
                         .borrow_mut()
-                        .insert(*name, NamedItem::Expr(expr.clone()));
+                        .insert(*name, NamedItem::Expr(*expr));
                 }
             }
 
