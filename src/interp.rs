@@ -50,8 +50,7 @@ impl Value {
                     match val {
                         Thunk::Value(v) => buf.push_str(&v.to_string()),
                         Thunk::Expr(..) => buf.push_str("#<unevaluated>"),
-                        Thunk::Builtin(func) =>
-                            buf.push_str(&format!("#<builtin {}>", func.name)),
+                        Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.name)),
                     }
                 }
                 buf.push('>');
@@ -281,13 +280,17 @@ impl State {
                     _ => return Ok(()),
                 };
                 let val = self.eval(expr, &env)?;
-                self.root_scope.borrow_mut().insert(*name, Thunk::Value(val));
+                self.root_scope
+                    .borrow_mut()
+                    .insert(*name, Thunk::Value(val));
             }
 
             Stmt::Assn(fixed, name, expr) => {
                 if *fixed {
                     let val = self.eval(*expr, &None)?;
-                    self.root_scope.borrow_mut().insert(*name, Thunk::Value(val));
+                    self.root_scope
+                        .borrow_mut()
+                        .insert(*name, Thunk::Value(val));
                 } else {
                     self.root_scope
                         .borrow_mut()
@@ -326,15 +329,18 @@ impl State {
 
     fn force(&self, val: Value) -> Result<Value, Error> {
         match val {
-            Value::Tup(values) => {
-                Ok(Value::Tup(values.into_iter().map(|t| {
-                    if let Thunk::Expr(e, env) = t {
-                        Ok(Thunk::Value(self.eval(e, &env)?))
-                    } else {
-                        Ok(t)
-                    }
-                }).collect::<Result<Vec<Thunk>, Error>>()?))
-            }
+            Value::Tup(values) => Ok(Value::Tup(
+                values
+                    .into_iter()
+                    .map(|t| {
+                        if let Thunk::Expr(e, env) = t {
+                            Ok(Thunk::Value(self.eval(e, &env)?))
+                        } else {
+                            Ok(t)
+                        }
+                    })
+                    .collect::<Result<Vec<Thunk>, Error>>()?,
+            )),
             _ => Ok(val),
         }
     }
@@ -379,7 +385,7 @@ impl State {
                 values
                     .iter()
                     .map(|v| Thunk::Expr(*v, env.clone()))
-                    .collect::<Vec<Thunk>>()
+                    .collect::<Vec<Thunk>>(),
             )),
 
             Expr::Range(from, to) => {
@@ -390,12 +396,10 @@ impl State {
                 )))
             }
 
-            Expr::Fun(_) => {
-                Ok(Value::Closure(Closure {
-                    func: expr_ref,
-                    scope: env.clone(),
-                }))
-            }
+            Expr::Fun(_) => Ok(Value::Closure(Closure {
+                func: expr_ref,
+                scope: env.clone(),
+            })),
 
             Expr::Ap(func, val) => {
                 let closure = match self.eval(*func, env)? {
@@ -437,7 +441,12 @@ impl State {
         }
     }
 
-    fn match_pat(&self, pat: &Pat, scrut: &mut Thunk, bindings: &mut Vec<(Name, Thunk)>) -> Result<bool, Error> {
+    fn match_pat(
+        &self,
+        pat: &Pat,
+        scrut: &mut Thunk,
+        bindings: &mut Vec<(Name, Thunk)>,
+    ) -> Result<bool, Error> {
         if let Pat::Var(v) = pat {
             bindings.push((*v, scrut.clone()));
             return Ok(true);
@@ -450,24 +459,28 @@ impl State {
 
         // now we can match deeper patterns, at least a little
         match pat {
-            Pat::Lit(lhs) => if let Thunk::Value(Value::Lit(rhs)) = scrut {
-                Ok(lhs == rhs)
-            } else {
-                Ok(false)
-            }
-            Pat::Tup(pats) => if let Thunk::Value(Value::Tup(thunks)) = scrut {
-                if pats.len() != thunks.len() {
-                    return Ok(false)
+            Pat::Lit(lhs) => {
+                if let Thunk::Value(Value::Lit(rhs)) = scrut {
+                    Ok(lhs == rhs)
+                } else {
+                    Ok(false)
                 }
-
-                for (p, t) in pats.iter().zip(thunks) {
-                    if !self.match_pat(p, t, bindings)? {
+            }
+            Pat::Tup(pats) => {
+                if let Thunk::Value(Value::Tup(thunks)) = scrut {
+                    if pats.len() != thunks.len() {
                         return Ok(false);
                     }
+
+                    for (p, t) in pats.iter().zip(thunks) {
+                        if !self.match_pat(p, t, bindings)? {
+                            return Ok(false);
+                        }
+                    }
+                    Ok(true)
+                } else {
+                    Ok(false)
                 }
-                Ok(true)
-            } else {
-                Ok(false)
             }
             _ => Ok(false),
         }
