@@ -3,6 +3,7 @@ use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+use std::rc::Rc;
 
 macro_rules! bail {
     ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
@@ -14,6 +15,7 @@ pub enum Value {
     Lit(Literal),
     Tup(Vec<Value>),
     Builtin(&'static BuiltinFunc),
+    Closure(Closure),
     Nil,
 }
 
@@ -51,6 +53,7 @@ impl Value {
                 f(&buf)
             }
             Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
+            Value::Closure(_) => f(&format!("#<lambda ...>")),
         }
     }
 }
@@ -63,7 +66,7 @@ impl fmt::Display for Value {
 
 pub struct BuiltinFunc {
     name: &'static str,
-    callback: &'static dyn Fn(&State, ExprRef) -> Result<Value, Error>,
+    callback: &'static dyn Fn(&State, ExprRef, &Env) -> Result<Value, Error>,
 }
 
 #[derive(Debug)]
@@ -94,7 +97,7 @@ impl std::error::Error for Error {}
 const BUILTINS: &[BuiltinFunc] = &[
     BuiltinFunc {
         name: "rep",
-        callback: &|state: &State, expr: ExprRef| -> Result<Value, Error> {
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let (rep, expr) = {
                 let ast = state.ast.borrow();
                 let args = match &ast[expr] {
@@ -107,16 +110,16 @@ const BUILTINS: &[BuiltinFunc] = &[
                 (args[0], args[1])
             };
             let mut buf = String::new();
-            let num = state.eval(rep)?.as_num()?;
+            let num = state.eval(rep, env)?.as_num()?;
             for _ in 0..num {
-                buf.push_str(&state.eval(expr)?.as_str()?.to_string());
+                buf.push_str(&state.eval(expr, env)?.as_str()?.to_string());
             }
             Ok(Value::Lit(Literal::Str(buf)))
         },
     },
     BuiltinFunc {
         name: "length",
-        callback: &|state: &State, expr: ExprRef| -> Result<Value, Error> {
+        callback: &|state: &State, expr: ExprRef, _env: &Env| -> Result<Value, Error> {
             let ast = state.ast.borrow();
             let args = match &ast[expr] {
                 Expr::Tup(tup) => tup,
@@ -127,15 +130,15 @@ const BUILTINS: &[BuiltinFunc] = &[
     },
     BuiltinFunc {
         name: "to-upper",
-        callback: &|state: &State, expr: ExprRef| -> Result<Value, Error> {
-            let s = state.eval(expr)?;
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let s = state.eval(expr, env)?;
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
         },
     },
     BuiltinFunc {
         name: "to-lower",
-        callback: &|state: &State, expr: ExprRef| -> Result<Value, Error> {
-            let s = state.eval(expr)?;
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let s = state.eval(expr, env)?;
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         },
     },
@@ -147,15 +150,29 @@ impl fmt::Debug for BuiltinFunc {
     }
 }
 
+#[derive(Debug, Clone)]
 enum NamedItem {
     Expr(ExprRef),
     Value(Value),
     Builtin(&'static BuiltinFunc),
 }
 
+type Env = Option<Rc<Scope>>;
+#[derive(Debug)]
+pub struct Scope {
+    vars: HashMap<Name, NamedItem>,
+    parent: Env,
+}
+
+#[derive(Debug, Clone)]
+pub struct Closure {
+    expr: ExprRef,
+    scope: Env,
+}
+
 pub struct State {
     ast: RefCell<ASTArena>,
-    scope: RefCell<HashMap<Name, NamedItem>>,
+    root_scope: RefCell<HashMap<Name, NamedItem>>,
     rand: RefCell<rand::rngs::ThreadRng>,
     parser: crate::grammar::StmtsParser,
 }
@@ -169,18 +186,33 @@ impl Default for State {
 impl State {
     pub fn new() -> State {
         let s = State {
-            scope: RefCell::new(HashMap::new()),
+            root_scope: RefCell::new(HashMap::new()),
             rand: RefCell::new(rand::thread_rng()),
             parser: crate::grammar::StmtsParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
         for builtin in BUILTINS {
             let sym = s.ast.borrow_mut().add_string(builtin.name);
-            s.scope
+            s.root_scope
                 .borrow_mut()
                 .insert(sym, NamedItem::Builtin(builtin));
         }
         s
+    }
+
+    fn lookup(&self, env: &Env, name: Name) -> Result<NamedItem, Error> {
+        if let Some(env) = env {
+            if let Some(ne) = env.vars.get(&name) {
+                Ok(ne.clone())
+            } else {
+                self.lookup(&env.parent, name)
+            }
+        } else {
+            match self.root_scope.borrow().get(&name) {
+                None => bail!("no such thing: {:?}", name),
+                Some(ne) => Ok(ne.clone()),
+            }
+        }
     }
 
     pub fn run(&self, src: &str) -> Result<(), Error> {
@@ -218,7 +250,7 @@ impl State {
 
     pub fn autocomplete(&self, fragment: &str, at_beginning: bool) -> Vec<String> {
         let mut possibilities = Vec::new();
-        for name in self.scope.borrow().keys() {
+        for name in self.root_scope.borrow().keys() {
             if self.ast.borrow()[*name].starts_with(fragment) {
                 possibilities.push(self.ast.borrow()[*name].to_string());
             }
@@ -232,27 +264,26 @@ impl State {
     pub fn execute(&self, stmt: &Stmt) -> Result<(), Error> {
         match stmt {
             Stmt::Puts(expr) => {
-                let val = self.eval(*expr)?;
+                let val = self.eval(*expr, &None)?;
                 println!("{}", val.to_string());
             }
 
             Stmt::Fix(name) => {
-                let expr = match self.scope.borrow().get(name) {
-                    None => bail!("no such thing: {:?}", name),
-                    Some(NamedItem::Expr(e)) => *e,
+                let expr = match self.lookup(&None, *name)? {
+                    NamedItem::Expr(e) => e,
                     // if it's not an expr, then our work here is done
                     _ => return Ok(()),
                 };
-                let val = self.eval(expr)?;
-                self.scope.borrow_mut().insert(*name, NamedItem::Value(val));
+                let val = self.eval(expr, &None)?;
+                self.root_scope.borrow_mut().insert(*name, NamedItem::Value(val));
             }
 
             Stmt::Assn(fixed, name, expr) => {
                 if *fixed {
-                    let val = self.eval(*expr)?;
-                    self.scope.borrow_mut().insert(*name, NamedItem::Value(val));
+                    let val = self.eval(*expr, &None)?;
+                    self.root_scope.borrow_mut().insert(*name, NamedItem::Value(val));
                 } else {
-                    self.scope
+                    self.root_scope
                         .borrow_mut()
                         .insert(*name, NamedItem::Expr(*expr));
                 }
@@ -261,7 +292,7 @@ impl State {
             Stmt::LitAssn(fixed, name, strs) => {
                 if *fixed {
                     let choice = &strs[self.rand.borrow_mut().gen_range(0..strs.len())];
-                    self.scope.borrow_mut().insert(
+                    self.root_scope.borrow_mut().insert(
                         *name,
                         NamedItem::Value(Value::Lit(Literal::Str(choice.clone()))),
                     );
@@ -279,7 +310,7 @@ impl State {
                     })
                     .collect();
                 let choices = self.ast.borrow_mut().add_expr(Expr::Chc(choices));
-                self.scope
+                self.root_scope
                     .borrow_mut()
                     .insert(*name, NamedItem::Expr(choices));
             }
@@ -287,27 +318,26 @@ impl State {
         Ok(())
     }
 
-    fn eval(&self, expr: ExprRef) -> Result<Value, Error> {
+    fn eval(&self, expr: ExprRef, env: &Env) -> Result<Value, Error> {
         let expr = &self.ast.borrow()[expr];
         match expr {
             Expr::Lit(l) => Ok(Value::Lit(l.clone())),
             Expr::Nil => Ok(Value::Nil),
             Expr::Var(v) => {
-                let e = match self.scope.borrow().get(&v) {
-                    Some(NamedItem::Expr(e)) => *e,
-                    Some(NamedItem::Value(v)) => return Ok(v.clone()),
-                    Some(NamedItem::Builtin(b)) => return Ok(Value::Builtin(b)),
-                    None => bail!("no such thing: {:?}", v),
+                let e = match self.lookup(env, *v)? {
+                    NamedItem::Expr(e) => e,
+                    NamedItem::Value(v) => return Ok(v.clone()),
+                    NamedItem::Builtin(b) => return Ok(Value::Builtin(b)),
                 };
-                self.eval(e)
+                self.eval(e, env)
             }
             Expr::Cat(cat) => {
                 if cat.len() == 1 {
-                    self.eval(cat[0])
+                    self.eval(cat[0], env)
                 } else {
                     let mut buf = String::new();
                     for expr in cat {
-                        let val = self.eval(*expr)?;
+                        let val = self.eval(*expr, env)?;
                         buf.push_str(&val.to_string());
                     }
                     Ok(Value::Lit(Literal::Str(buf)))
@@ -315,24 +345,24 @@ impl State {
             }
             Expr::Chc(choices) => {
                 if choices.len() == 1 {
-                    self.eval(choices[0].value)
+                    self.eval(choices[0].value, env)
                 } else {
-                    self.choose(&choices)
+                    self.choose(&choices, env)
                 }
             }
             Expr::Tup(values) => Ok(Value::Tup(
                 values
                     .iter()
-                    .map(|v| self.eval(*v))
+                    .map(|v| self.eval(*v, env))
                     .collect::<Result<Vec<Value>, Error>>()?,
             )),
-            Expr::Ap(fun, arg) => match self.eval(*fun)? {
-                Value::Builtin(builtin) => (builtin.callback)(self, *arg),
+            Expr::Ap(fun, arg) => match self.eval(*fun, env)? {
+                Value::Builtin(builtin) => (builtin.callback)(self, *arg, env),
                 _ => bail!("bad function: {:?}", fun),
             },
             Expr::Range(from, to) => {
-                let from = self.eval(*from)?.as_num()?;
-                let to = self.eval(*to)?.as_num()?;
+                let from = self.eval(*from, env)?.as_num()?;
+                let to = self.eval(*to, env)?.as_num()?;
                 Ok(Value::Lit(Literal::Num(
                     self.rand.borrow_mut().gen_range(from..=to),
                 )))
@@ -341,12 +371,12 @@ impl State {
         }
     }
 
-    fn choose(&self, choices: &[Choice]) -> Result<Value, Error> {
+    fn choose(&self, choices: &[Choice], env: &Env) -> Result<Value, Error> {
         let max = choices.iter().map(Choice::weight).sum();
         let mut choice = self.rand.borrow_mut().gen_range(0..max);
         for ch in choices {
             if choice < ch.weight() {
-                return self.eval(ch.value);
+                return self.eval(ch.value, env);
             }
             choice -= ch.weight();
         }
