@@ -57,13 +57,13 @@ pub Name: Name = {
     "var" => ast.add_string(<>),
 };
 
-pub Expr: Expr = {
+pub Expr: ExprRef = {
     <mut ts:(<Choice> "|")*> <t:Choice> => {
         if ts.len() == 0 {
             t.value
         } else {
             ts.push(t);
-            Expr::Chc(ts)
+            ast.add_expr(Expr::Chc(ts))
         }
     }
 };
@@ -79,42 +79,42 @@ pub Choice: Choice = {
     }
 };
 
-pub Term: Expr = {
+pub Term: ExprRef = {
     <mut bs:(<Branch>)*> => {
         match bs.len() {
-            0 => Expr::Nil,
+            0 => ast.expr_nil(),
             1 => bs.pop().unwrap(),
-            _ => Expr::Cat(<>),
+            _ => ast.add_expr(Expr::Cat(<>)),
         }
     }
 };
 
-pub Branch: Expr = {
-    <l:Branch> "." <r:Subbranch> => Expr::Ap(Box::new(l), Box::new(r)),
+pub Branch: ExprRef = {
+    <l:Branch> "." <r:Subbranch> => ast.add_expr(Expr::Ap(l, r)),
     <Subbranch> => <>,
 };
 
-pub Subbranch: Expr = {
-    <l:Subbranch> ".." <r:Leaf> => Expr::Range(Box::new(l), Box::new(r)),
+pub Subbranch: ExprRef = {
+    <l:Subbranch> ".." <r:Leaf> => ast.add_expr(Expr::Range(l, r)),
     <Leaf> => <>,
 }
 
-pub Leaf: Expr = {
-    <Literal> => Expr::Lit(<>),
-    <Name> => Expr::Var(<>),
+pub Leaf: ExprRef = {
+    <Literal> => ast.add_expr(Expr::Lit(<>)),
+    <Name> => ast.add_expr(Expr::Var(<>)),
     "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
-        if es.len() == 0 && e == Expr::Nil {
-            Expr::Tup(Vec::new())
+        if es.len() == 0 && e == ast.expr_nil() {
+            ast.add_expr(Expr::Tup(Vec::new()))
         } else {
             es.push(e);
-            Expr::Tup(es)
+            ast.add_expr(Expr::Tup(es))
         }
     },
     "let" <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
-        Expr::Let(name, Box::new(e1), Box::new(e2)),
+        ast.add_expr(Expr::Let(name, e1, e2)),
     "{" <mut cs:(<Case> ";")*> <c:Case> "}" => {
         cs.push(c);
-        Expr::Fun(cs)
+        ast.add_expr(Expr::Fun(cs))
     },
     "(" <e:Expr> ")" => e,
 };

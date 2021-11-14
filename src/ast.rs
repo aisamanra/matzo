@@ -4,6 +4,7 @@ pub type Name = string_interner::DefaultSymbol;
 
 pub struct ASTArena {
     strings: string_interner::StringInterner,
+    exprs: Vec<Expr>,
 }
 
 impl Default for ASTArena {
@@ -16,7 +17,18 @@ impl ASTArena {
     pub fn new() -> ASTArena {
         ASTArena {
             strings: string_interner::StringInterner::new(),
+            exprs: vec![Expr::Nil],
         }
+    }
+
+    pub fn expr_nil(&self) -> ExprRef {
+        ExprRef { idx: 0 }
+    }
+
+    pub fn add_expr(&mut self, e: Expr) -> ExprRef {
+        let idx = self.exprs.len();
+        self.exprs.push(e);
+        ExprRef { idx }
     }
 
     pub fn add_string(&mut self, s: &str) -> Name {
@@ -27,7 +39,7 @@ impl ASTArena {
         match stmt {
             Stmt::Puts(expr) => {
                 write!(f, "Puts ")?;
-                self.show_expr(expr, f, 0)
+                self.show_expr(&self[*expr], f, 0)
             }
             Stmt::Fix(name) => writeln!(f, "Fix {}", &self[*name]),
             Stmt::Assn(fixed, name, expr) => {
@@ -37,7 +49,7 @@ impl ASTArena {
                     if *fixed { "fixed" } else { "" },
                     &self[*name]
                 )?;
-                self.show_expr(expr, f, 0)
+                self.show_expr(&self[*expr], f, 0)
             }
             Stmt::LitAssn(fixed, name, strs) => {
                 write!(
@@ -86,9 +98,9 @@ impl ASTArena {
             Expr::Range(from, to) => {
                 writeln!(f, "Range(")?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(from, f, depth + 2)?;
+                self.show_expr(&self[*from], f, depth + 2)?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(to, f, depth + 2)?;
+                self.show_expr(&self[*to], f, depth + 2)?;
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
@@ -96,9 +108,9 @@ impl ASTArena {
             Expr::Ap(func, arg) => {
                 writeln!(f, "Ap(")?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(func, f, depth + 2)?;
+                self.show_expr(&self[*func], f, depth + 2)?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(arg, f, depth + 2)?;
+                self.show_expr(&self[*arg], f, depth + 2)?;
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
@@ -107,7 +119,7 @@ impl ASTArena {
                 writeln!(f, "Tup(")?;
                 for e in expr {
                     self.indent(f, depth + 2)?;
-                    self.show_expr(e, f, depth + 2)?;
+                    self.show_expr(&self[*e], f, depth + 2)?;
                 }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
@@ -117,7 +129,7 @@ impl ASTArena {
                 writeln!(f, "Cat(")?;
                 for e in expr {
                     self.indent(f, depth + 2)?;
-                    self.show_expr(e, f, depth + 2)?;
+                    self.show_expr(&self[*e], f, depth + 2)?;
                 }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
@@ -130,10 +142,10 @@ impl ASTArena {
                         self.indent(f, depth + 2)?;
                         writeln!(f, "{}:", s)?;
                         self.indent(f, depth + 4)?;
-                        self.show_expr(&e.value, f, depth + 4)?;
+                        self.show_expr(&self[e.value], f, depth + 4)?;
                     } else {
                         self.indent(f, depth + 2)?;
-                        self.show_expr(&e.value, f, depth + 2)?;
+                        self.show_expr(&self[e.value], f, depth + 2)?;
                     }
                 }
                 self.indent(f, depth)?;
@@ -143,9 +155,9 @@ impl ASTArena {
             Expr::Let(name, expr, body) => {
                 writeln!(f, "Let({}", &self[*name])?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(expr, f, depth + 2)?;
+                self.show_expr(&self[*expr], f, depth + 2)?;
                 self.indent(f, depth + 2)?;
-                self.show_expr(body, f, depth + 2)?;
+                self.show_expr(&self[*body], f, depth + 2)?;
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
@@ -157,7 +169,7 @@ impl ASTArena {
                     self.show_pat(&case.pat, f)?;
                     writeln!(f, " =>")?;
                     self.indent(f, depth + 4)?;
-                    self.show_expr(&case.expr, f, depth + 4)?;
+                    self.show_expr(&self[case.expr], f, depth + 4)?;
                 }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
@@ -171,6 +183,14 @@ impl std::ops::Index<string_interner::DefaultSymbol> for ASTArena {
 
     fn index(&self, sf: string_interner::DefaultSymbol) -> &str {
         self.strings.resolve(sf).unwrap()
+    }
+}
+
+impl std::ops::Index<ExprRef> for ASTArena {
+    type Output = Expr;
+
+    fn index(&self, rf: ExprRef) -> &Self::Output {
+        &self.exprs[rf.idx]
     }
 }
 
@@ -198,11 +218,11 @@ impl<'a> std::fmt::Debug for Printable<'a, Expr> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     /// evaluate and print the value of an expression
-    Puts(Expr),
+    Puts(ExprRef),
     /// replace a named item with the forced version of that item
     Fix(Name),
     /// assign a value to a name which may or may not be forced
-    Assn(bool, Name, Expr),
+    Assn(bool, Name, ExprRef),
     /// assign one of a set of strings to a name, which may or may not
     /// be forced
     LitAssn(bool, Name, Vec<String>),
@@ -221,22 +241,27 @@ impl Stmt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Var(Name),
-    Cat(Vec<Expr>),
+    Cat(Vec<ExprRef>),
     Chc(Vec<Choice>),
     Lit(Literal),
-    Ap(Box<Expr>, Box<Expr>),
-    Tup(Vec<Expr>),
-    Let(Name, Box<Expr>, Box<Expr>),
+    Ap(ExprRef, ExprRef),
+    Tup(Vec<ExprRef>),
+    Let(Name, ExprRef, ExprRef),
     Fun(Vec<Case>),
-    Range(Box<Expr>, Box<Expr>),
+    Range(ExprRef, ExprRef),
     Nil,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ExprRef {
+    idx: usize,
 }
 
 /// A single case in an anonymous function or `case` statement
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Case {
     pub pat: Pat,
-    pub expr: Expr,
+    pub expr: ExprRef,
 }
 
 /// A pattern, e.g. in an anonymous function or `case` statement
@@ -252,7 +277,7 @@ pub enum Pat {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Choice {
     pub weight: Option<i64>,
-    pub value: Expr,
+    pub value: ExprRef,
 }
 
 impl Choice {
