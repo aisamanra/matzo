@@ -280,6 +280,7 @@ impl State {
                     _ => return Ok(()),
                 };
                 let val = self.eval(expr, &env)?;
+                let val = self.force(val)?;
                 self.root_scope
                     .borrow_mut()
                     .insert(*name, Thunk::Value(val));
