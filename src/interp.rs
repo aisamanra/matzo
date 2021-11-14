@@ -451,6 +451,9 @@ impl State {
             bindings.push((*v, scrut.clone()));
             return Ok(true);
         }
+        if let Pat::Wildcard = pat {
+            return Ok(true);
+        }
         // if it's not just a variable, then we'll need to make sure
         // we've evaluated `scrut` at least one level from here
         if let Thunk::Expr(e, env) = scrut {

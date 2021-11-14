@@ -75,6 +75,7 @@ impl ASTArena {
 
     fn show_pat(&self, pat: &Pat, f: &mut fmt::Formatter) -> fmt::Result {
         match pat {
+            Pat::Wildcard => write!(f, "_"),
             Pat::Var(n) => write!(f, "{}", &self[*n]),
             Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[*n]),
             Pat::Lit(lit) => write!(f, "{:?}", lit),
@@ -268,6 +269,7 @@ pub struct Case {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat {
     Var(Name),
+    Wildcard,
     Lit(Literal),
     Tup(Vec<Pat>),
 }

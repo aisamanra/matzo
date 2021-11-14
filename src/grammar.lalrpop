@@ -19,6 +19,7 @@ extern {
         "," => Token::Comma,
         ";" => Token::Semi,
         "." => Token::Dot,
+        "_" => Token::Underscore,
         ".." => Token::DotDot,
         "=>" => Token::Arrow,
         ":=" => Token::Assn,
@@ -124,6 +125,7 @@ pub Case: Case = {
 };
 
 pub Pat: Pat = {
+    "_" => Pat::Wildcard,
     <Literal> => Pat::Lit(<>),
     <Name> => Pat::Var(<>),
     "<" <mut ps:(<Pat> ",")*> <p:Pat> ">" => {

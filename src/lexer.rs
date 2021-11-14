@@ -57,6 +57,9 @@ pub enum Token<'a> {
     #[token(".")]
     Dot,
 
+    #[token("_")]
+    Underscore,
+
     #[token("..")]
     DotDot,
 
