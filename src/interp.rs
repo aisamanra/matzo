@@ -160,7 +160,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         },
     },
-
     BuiltinFunc {
         name: "concat",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -175,7 +174,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Tup(contents))
         },
     },
-
     BuiltinFunc {
         name: "tuple-fold",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -199,8 +197,8 @@ const BUILTINS: &[BuiltinFunc] = &[
             }
 
             state.hnf(&result)
-        }
-    }
+        },
+    },
 ];
 
 impl fmt::Debug for BuiltinFunc {
@@ -464,26 +462,20 @@ impl State {
                 scope: env.clone(),
             })),
 
-            Expr::Ap(func, val) => {
-                match self.eval(*func, env)? {
-                    Value::Closure(c) => {
-                        let scrut = Thunk::Expr(*val, env.clone());
-                        self.eval_closure(&c, scrut)
-                    },
-                    Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
-                    _ => bail!("Bad function: {:?}", func),
+            Expr::Ap(func, val) => match self.eval(*func, env)? {
+                Value::Closure(c) => {
+                    let scrut = Thunk::Expr(*val, env.clone());
+                    self.eval_closure(&c, scrut)
                 }
-            }
+                Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
+                _ => bail!("Bad function: {:?}", func),
+            },
 
             _ => bail!("unimplemented: {:?}", expr),
         }
     }
 
-    fn eval_closure(
-        &self,
-        closure: &Closure,
-        mut scrut: Thunk,
-    ) -> Result<Value, Error> {
+    fn eval_closure(&self, closure: &Closure, mut scrut: Thunk) -> Result<Value, Error> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
