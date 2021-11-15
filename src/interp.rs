@@ -194,8 +194,8 @@ const BUILTINS: &[BuiltinFunc] = &[
 
             let mut result = init.clone();
             for t in tup.as_tup()? {
-                let partial = state.eval_closure(func.as_closure()?, result, env)?;
-                result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone(), env)?);
+                let partial = state.eval_closure(func.as_closure()?, result)?;
+                result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone())?);
             }
 
             state.hnf(&result)
@@ -468,7 +468,7 @@ impl State {
                 match self.eval(*func, env)? {
                     Value::Closure(c) => {
                         let scrut = Thunk::Expr(*val, env.clone());
-                        self.eval_closure(&c, scrut, env)
+                        self.eval_closure(&c, scrut)
                     },
                     Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
                     _ => bail!("Bad function: {:?}", func),
@@ -483,7 +483,6 @@ impl State {
         &self,
         closure: &Closure,
         mut scrut: Thunk,
-        env: &Env,
     ) -> Result<Value, Error> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
