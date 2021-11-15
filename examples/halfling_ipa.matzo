@@ -1,7 +1,10 @@
-tuple-map := { func => {tup => tuple-fold.<{xs => {x => concat.<xs, <func.x>>}}, <>, tup>}};
+(* these should probably be part of the stdlib eventually *)
+tuple-map := {func => {tup =>
+  tuple-fold.<{xs => {x => concat.<xs, <func.x>>}}, <>, tup>
+}};
+flatten := {t => tuple-fold.<{ x => { xs => x xs } }, "", t>};
 
-flatten := { t => tuple-fold.<{ x => { xs => x xs } }, "", t> };
-word := { w => flatten.(tuple-map.orthography.w) };
+word := {w => flatten.(tuple-map.orthography.w)};
 wd := concat.<begin, middle, end>;
 middle := syll | concat.<syll, syll> | concat.<syll, syll, syll> | concat.<syll, syll, syll, syll>;
 syll := <cons, vowel>;
