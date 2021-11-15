@@ -34,6 +34,20 @@ impl Value {
         }
     }
 
+    fn as_tup(&self) -> Result<&[Thunk], Error> {
+        match self {
+            Value::Tup(vals) => Ok(&vals),
+            _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
+        }
+    }
+
+    fn as_closure(&self) -> Result<&Closure, Error> {
+        match self {
+            Value::Closure(closure) => Ok(&closure),
+            _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
+        }
+    }
+
     fn with_str<U>(&self, f: impl FnOnce(&str) -> U) -> U {
         match self {
             Value::Nil => f(""),
@@ -146,6 +160,47 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         },
     },
+
+    BuiltinFunc {
+        name: "concat",
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let val = state.eval(expr, env)?;
+            let tup = val.as_tup()?;
+            let mut contents = Vec::new();
+            for elem in tup {
+                for th in state.hnf(elem)?.as_tup()? {
+                    contents.push(th.clone());
+                }
+            }
+            Ok(Value::Tup(contents))
+        },
+    },
+
+    BuiltinFunc {
+        name: "tuple-fold",
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let val = state.eval(expr, env)?;
+            let args = val.as_tup()?;
+            if args.len() != 3 {
+                bail!("`tuple-fold`: expected 3 arguments, got {}", args.len());
+            }
+
+            let func = &args[0];
+            let init = &args[1];
+            let tup = &args[2];
+
+            let func = state.hnf(&func)?;
+            let tup = state.hnf(&tup)?;
+
+            let mut result = init.clone();
+            for t in tup.as_tup()? {
+                let partial = state.eval_closure(func.as_closure()?, result, env)?;
+                result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone(), env)?);
+            }
+
+            state.hnf(&result)
+        }
+    }
 ];
 
 impl fmt::Debug for BuiltinFunc {
@@ -213,7 +268,7 @@ impl State {
             }
         } else {
             match self.root_scope.borrow().get(&name) {
-                None => bail!("no such thing: {:?}", name),
+                None => bail!("no such thing: {}", &self.ast.borrow()[name]),
                 Some(ne) => Ok(ne.clone()),
             }
         }
@@ -334,15 +389,21 @@ impl State {
                 values
                     .into_iter()
                     .map(|t| {
-                        if let Thunk::Expr(e, env) = t {
-                            Ok(Thunk::Value(self.eval(e, &env)?))
-                        } else {
-                            Ok(t)
-                        }
+                        let v = self.hnf(&t)?;
+                        let v = self.force(v)?;
+                        Ok(Thunk::Value(v))
                     })
                     .collect::<Result<Vec<Thunk>, Error>>()?,
             )),
             _ => Ok(val),
+        }
+    }
+
+    fn hnf(&self, thunk: &Thunk) -> Result<Value, Error> {
+        match thunk {
+            Thunk::Expr(expr, env) => self.eval(*expr, env),
+            Thunk::Value(val) => Ok(val.clone()),
+            Thunk::Builtin(b) => Ok(Value::Builtin(b)),
         }
     }
 
@@ -368,6 +429,7 @@ impl State {
                     let mut buf = String::new();
                     for expr in cat {
                         let val = self.eval(*expr, env)?;
+                        let val = self.force(val)?;
                         buf.push_str(&val.to_string());
                     }
                     Ok(Value::Lit(Literal::Str(buf)))
@@ -403,43 +465,51 @@ impl State {
             })),
 
             Expr::Ap(func, val) => {
-                let closure = match self.eval(*func, env)? {
-                    Value::Closure(c) => c,
+                match self.eval(*func, env)? {
+                    Value::Closure(c) => {
+                        let scrut = Thunk::Expr(*val, env.clone());
+                        self.eval_closure(&c, scrut, env)
+                    },
                     Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
                     _ => bail!("Bad function: {:?}", func),
-                };
-                let ast = self.ast.borrow();
-                let cases = match &ast[closure.func] {
-                    Expr::Fun(cases) => cases,
-                    _ => bail!("INVARIANT FAILED"),
-                };
-
-                // this is mutable because we only want to force
-                // it once per pattern.
-                let mut scrut = Thunk::Expr(*val, env.clone());
-                for c in cases {
-                    let mut bindings = Vec::new();
-                    if !self.match_pat(&c.pat, &mut scrut, &mut bindings)? {
-                        continue;
-                    }
-
-                    let mut new_scope = HashMap::new();
-                    for (name, binding) in bindings {
-                        new_scope.insert(name, binding);
-                    }
-
-                    let new_scope = Rc::new(Scope {
-                        vars: new_scope,
-                        parent: closure.scope,
-                    });
-                    return self.eval(c.expr, &Some(new_scope));
                 }
-
-                bail!("No pattern in {:?} matched {:?}", cases, scrut);
             }
 
             _ => bail!("unimplemented: {:?}", expr),
         }
+    }
+
+    fn eval_closure(
+        &self,
+        closure: &Closure,
+        mut scrut: Thunk,
+        env: &Env,
+    ) -> Result<Value, Error> {
+        let ast = self.ast.borrow();
+        let cases = match &ast[closure.func] {
+            Expr::Fun(cases) => cases,
+            _ => bail!("INVARIANT FAILED"),
+        };
+
+        for c in cases {
+            let mut bindings = Vec::new();
+            if !self.match_pat(&c.pat, &mut scrut, &mut bindings)? {
+                continue;
+            }
+
+            let mut new_scope = HashMap::new();
+            for (name, binding) in bindings {
+                new_scope.insert(name, binding);
+            }
+
+            let new_scope = Rc::new(Scope {
+                vars: new_scope,
+                parent: closure.scope.clone(),
+            });
+            return self.eval(c.expr, &Some(new_scope));
+        }
+
+        bail!("No pattern in {:?} matched {:?}", cases, scrut);
     }
 
     fn match_pat(
