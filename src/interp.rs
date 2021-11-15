@@ -36,14 +36,14 @@ impl Value {
 
     fn as_tup(&self) -> Result<&[Thunk], Error> {
         match self {
-            Value::Tup(vals) => Ok(&vals),
+            Value::Tup(vals) => Ok(vals),
             _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
         }
     }
 
     fn as_closure(&self) -> Result<&Closure, Error> {
         match self {
-            Value::Closure(closure) => Ok(&closure),
+            Value::Closure(closure) => Ok(closure),
             _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
         }
     }
@@ -71,7 +71,7 @@ impl Value {
                 f(&buf)
             }
             Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
-            Value::Closure(_) => f(&format!("#<lambda ...>")),
+            Value::Closure(_) => f("#<lambda ...>"),
         }
     }
 }
@@ -187,8 +187,8 @@ const BUILTINS: &[BuiltinFunc] = &[
             let init = &args[1];
             let tup = &args[2];
 
-            let func = state.hnf(&func)?;
-            let tup = state.hnf(&tup)?;
+            let func = state.hnf(func)?;
+            let tup = state.hnf(tup)?;
 
             let mut result = init.clone();
             for t in tup.as_tup()? {
@@ -414,7 +414,7 @@ impl State {
             Expr::Var(v) => {
                 let (e, env) = match self.lookup(env, *v)? {
                     Thunk::Expr(e, env) => (e, env),
-                    Thunk::Value(v) => return Ok(v.clone()),
+                    Thunk::Value(v) => return Ok(v),
                     Thunk::Builtin(b) => return Ok(Value::Builtin(b)),
                 };
                 self.eval(e, &env)
@@ -438,7 +438,7 @@ impl State {
                 if choices.len() == 1 {
                     self.eval(choices[0].value, env)
                 } else {
-                    self.choose(&choices, env)
+                    self.choose(choices, env)
                 }
             }
 
@@ -467,7 +467,7 @@ impl State {
                     let scrut = Thunk::Expr(*val, env.clone());
                     self.eval_closure(&c, scrut)
                 }
-                Value::Builtin(builtin) => return (builtin.callback)(self, *val, env),
+                Value::Builtin(builtin) => (builtin.callback)(self, *val, env),
                 _ => bail!("Bad function: {:?}", func),
             },
 
@@ -519,7 +519,7 @@ impl State {
         // if it's not just a variable, then we'll need to make sure
         // we've evaluated `scrut` at least one level from here
         if let Thunk::Expr(e, env) = scrut {
-            *scrut = Thunk::Value(self.eval(*e, &env)?)
+            *scrut = Thunk::Value(self.eval(*e, env)?)
         };
 
         // now we can match deeper patterns, at least a little
