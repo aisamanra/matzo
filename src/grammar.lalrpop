@@ -137,6 +137,7 @@ pub Pat: Pat = {
     "_" => Pat::Wildcard,
     <Literal> => Pat::Lit(<>),
     <Name> => Pat::Var(<>),
+    "<" ">" => Pat::Tup(Vec::new()),
     "<" <mut ps:(<Pat> ",")*> <p:Pat> ">" => {
         ps.push(p);
         Pat::Tup(ps)
