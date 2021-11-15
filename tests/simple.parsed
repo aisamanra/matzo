@@ -1,0 +1,11 @@
+Puts Cat(
+  Chc(
+    Str("p")
+    Str("b")
+  )
+  Chc(
+    Str("a")
+    Str("u")
+  )
+)
+

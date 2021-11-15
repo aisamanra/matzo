@@ -1,0 +1,11 @@
+LitAssn fixed c, [  p  b ]
+
+LitAssn fixed v, [  a  u ]
+
+Puts Cat(
+  Var(c)
+  Var(v)
+  Var(c)
+  Var(v)
+)
+
