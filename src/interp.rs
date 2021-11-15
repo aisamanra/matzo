@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
+use std::io;
 
 macro_rules! bail {
     ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
@@ -257,6 +258,10 @@ impl State {
         s
     }
 
+    pub fn get_ast(&self) -> &RefCell<ASTArena> {
+        &self.ast
+    }
+
     fn lookup(&self, env: &Env, name: Name) -> Result<Thunk, Error> {
         if let Some(env) = env {
             if let Some(ne) = env.vars.get(&name) {
@@ -275,8 +280,9 @@ impl State {
     pub fn run(&self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
         let stmts = self.parser.parse(&mut self.ast.borrow_mut(), lexed)?;
+        let mut stdout = io::stdout();
         for stmt in stmts {
-            self.execute(&stmt)?;
+            self.execute(&stmt, &mut stdout)?;
         }
         Ok(())
     }
@@ -300,7 +306,7 @@ impl State {
             }
         };
         for stmt in stmts {
-            self.execute(&stmt)?;
+            self.execute(&stmt, io::stdout())?;
         }
         Ok(())
     }
@@ -318,12 +324,12 @@ impl State {
         possibilities
     }
 
-    pub fn execute(&self, stmt: &Stmt) -> Result<(), Error> {
+    pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), Error> {
         match stmt {
             Stmt::Puts(expr) => {
                 let val = self.eval(*expr, &None)?;
                 let val = self.force(val)?;
-                println!("{}", val.to_string());
+                writeln!(output, "{}", val.to_string()).unwrap();
             }
 
             Stmt::Fix(name) => {

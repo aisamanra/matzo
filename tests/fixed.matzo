@@ -1,0 +1,3 @@
+fix c ::= p b;
+fix v ::= a u;
+puts c v c v;

@@ -30,21 +30,39 @@ fn assert_eq(x: &str, y: &str) {
 const TEST_TEMPLATE: &str = "
 #[test]
 fn test_%PREFIX%() {
-  let mut ast = crate::ast::ASTArena::new();
+  let state = crate::interp::State::new();
   let source = include_str!(\"%ROOT%/tests/%PREFIX%.matzo\");
   let lexer = lexer::tokens(source);
-  let stmts = grammar::StmtsParser::new().parse(&mut ast, lexer);
+  let stmts = grammar::StmtsParser::new().parse(&mut state.get_ast().borrow_mut(), lexer);
   assert!(stmts.is_ok());
   let stmts = stmts.unwrap();
 
-  let mut buf = Vec::new();
-  for s in stmts {
-    writeln!(buf, \"{:?}\", s.show(&ast)).unwrap();
+  if let Ok(expected) = std::fs::read_to_string(\"%ROOT%/tests/%PREFIX%.parsed\") {
+    let mut buf = Vec::new();
+    for s in stmts.iter() {
+      writeln!(buf, \"{:?}\", s.show(&state.get_ast().borrow())).unwrap();
+    }
+    assert_eq(
+      std::str::from_utf8(&buf).unwrap().trim(),
+      expected.trim(),
+    );
   }
-  assert_eq(
-    std::str::from_utf8(&buf).unwrap().trim(),
-    include_str!(\"%ROOT%/tests/%PREFIX%.parsed\").trim(),
-  );
+
+  if let Ok(expected) = std::fs::read_to_string(\"%ROOT%/tests/%PREFIX%.output\") {
+    let possibilities = expected.lines().collect::<Vec<&str>>();
+    let mut buf = Vec::new();
+    for stmt in stmts {
+      state.execute(&stmt, &mut buf).unwrap();
+    }
+
+    let out = std::str::from_utf8(&buf).unwrap();
+    if !possibilities.contains(&out.trim()) {
+      panic!(\"Got output\\n  `{}`\\nbut expected one of the following:\\n{}\\n\",
+        &out.trim(),
+        possibilities.iter().map(|x| format!(\"  `{}`\\n\", x)).collect::<Vec<String>>().join(\", \"),
+      );
+    }
+  }
 }
 ";
 
