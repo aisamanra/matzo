@@ -1,0 +1,33 @@
+isZero := { Z => True; <S,_> => False };
+add := { Z     => { y => y }
+       ; <S,x> => { y => add.x.<S,y> } };
+incr := add.<S,Z>;
+
+two  := <S,<S,Z>>;
+four := <S,<S,<S,<S,Z>>>>;
+
+if := { True  => { x => { _ => x } }
+      ; False => { _ => { y => y } }
+      };
+minusOne := { Z => Z; <S,x> => x };
+
+puts "S is " S;
+puts "Z is " Z;
+
+puts "True is " True;
+puts "False is " False;
+
+puts "Is 0 zero?";
+puts isZero.Z;
+
+puts "Is 4 zero?";
+puts isZero.four;
+
+puts "2 + 4 = ";
+puts add.four.two;
+
+puts "Is zero zero?";
+puts if.(isZero.Z)."yes"."no";
+
+puts "Is 0+1 zero?";
+puts if.(isZero.(incr.Z))."yes"."no";
