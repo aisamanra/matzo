@@ -153,8 +153,13 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Let(name, expr, body) => {
-                writeln!(f, "Let({}", &self[*name])?;
+            Expr::Let(fixed, name, expr, body) => {
+                writeln!(
+                    f,
+                    "Let({}{}",
+                    if *fixed { "fixed " } else { "" },
+                    &self[*name]
+                )?;
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*expr], f, depth + 2)?;
                 self.indent(f, depth + 2)?;
@@ -247,7 +252,7 @@ pub enum Expr {
     Lit(Literal),
     Ap(ExprRef, ExprRef),
     Tup(Vec<ExprRef>),
-    Let(Name, ExprRef, ExprRef),
+    Let(bool, Name, ExprRef, ExprRef),
     Fun(Vec<Case>),
     Range(ExprRef, ExprRef),
     Nil,

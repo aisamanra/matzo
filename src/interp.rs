@@ -3,8 +3,8 @@ use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
-use std::rc::Rc;
 use std::io;
+use std::rc::Rc;
 
 macro_rules! bail {
     ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
@@ -477,7 +477,21 @@ impl State {
                 _ => bail!("Bad function: {:?}", func),
             },
 
-            _ => bail!("unimplemented: {:?}", expr),
+            Expr::Let(fixed, name, val, body) => {
+                let mut new_scope = HashMap::new();
+                if *fixed {
+                    let val = self.eval(*val, env)?;
+                    let val = self.force(val)?;
+                    new_scope.insert(*name, Thunk::Value(val));
+                } else {
+                    new_scope.insert(*name, Thunk::Expr(*val, env.clone()));
+                };
+                let new_scope = Rc::new(Scope {
+                    vars: new_scope,
+                    parent: env.clone(),
+                });
+                self.eval(*body, &Some(new_scope))
+            }
         }
     }
 

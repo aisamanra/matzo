@@ -120,8 +120,8 @@ pub Leaf: ExprRef = {
             ast.add_expr(Expr::Tup(es))
         }
     },
-    "let" <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
-        ast.add_expr(Expr::Let(name, e1, e2)),
+    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
+        ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
     "{" <mut cs:(<Case> ";")*> <c:Case> "}" => {
         cs.push(c);
         ast.add_expr(Expr::Fun(cs))
