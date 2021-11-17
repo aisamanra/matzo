@@ -109,6 +109,12 @@ pub enum Token<'a> {
 #[derive(Debug)]
 pub struct LexerError;
 
+impl std::fmt::Display for LexerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "LexerError")
+    }
+}
+
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Token<'_>, usize, LexerError>> {

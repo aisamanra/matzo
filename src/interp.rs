@@ -1,40 +1,12 @@
 use crate::ast::*;
+
+use anyhow::{Error,anyhow,bail};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
 use std::rc::Rc;
-
-macro_rules! bail {
-    ($fmt:expr) => { return Err(Error { message: format!($fmt), }) };
-    ($fmt:expr, $($e:expr),*) => { return Err(Error { message: format!($fmt, $($e),*), }) }
-}
-
-#[derive(Debug)]
-pub struct Error {
-    message: String,
-}
-
-impl From<lalrpop_util::ParseError<usize, crate::lexer::Token<'_>, crate::lexer::LexerError>>
-    for Error
-{
-    fn from(
-        err: lalrpop_util::ParseError<usize, crate::lexer::Token<'_>, crate::lexer::LexerError>,
-    ) -> Error {
-        Error {
-            message: format!("{:?}", err),
-        }
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self.message)
-    }
-}
-
-impl std::error::Error for Error {}
 
 /// A `Value` is a representation of the resut of evaluation. Note
 /// that a `Value` is a representation of something in _weak head
@@ -343,7 +315,7 @@ impl State {
     /// results to stdout.
     pub fn run(&self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
-        let stmts = self.parser.parse(&mut self.ast.borrow_mut(), lexed)?;
+        let stmts = self.parser.parse(&mut self.ast.borrow_mut(), lexed).map_err(|err| anyhow!("Got {:?}", err))?;
         let mut stdout = io::stdout();
         for stmt in stmts {
             self.execute(&stmt, &mut stdout)?;
@@ -372,7 +344,7 @@ impl State {
                 if let Ok(stmts) = self.parser.parse(&mut self.ast.borrow_mut(), lexed) {
                     stmts
                 } else {
-                    return Err(err.into());
+                    bail!("{:?}", err);
                 }
             }
         };
@@ -627,7 +599,7 @@ impl State {
     /// patterns. An example where that might work poorly if we're not
     /// careful is here:
     ///
-    /// ```
+    /// ```ignore
     /// {Foo => "1"; Foo => "2"; _ => "..."}.(Foo | Bar)
     /// ```
     ///
@@ -636,7 +608,7 @@ impl State {
     /// the forced argument_. But we also want the following to still
     /// contain non-determinism:
     ///
-    /// ```
+    /// ```ignore
     /// {<Foo, x> => x x "!"; <Bar, x> => x x "?"}.<Foo | Bar, "a" | "b">
     /// ```
     ///

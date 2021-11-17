@@ -69,6 +69,10 @@ fn test_%PREFIX%() {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     lalrpop::process_root()?;
 
+    for file in ["build.rs", "src/grammar.lalrpop"] {
+        println!("cargo:rerun-if-changed={}", file);
+    }
+
     vergen::vergen(vergen::Config::default())?;
 
     let out_dir = env::var("OUT_DIR")?;
