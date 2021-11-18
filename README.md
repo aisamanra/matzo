@@ -130,8 +130,5 @@ puts syll rep.<1..5, syll>;
 
 ## Todo
 
-- [ ] Pattern matching
-- [ ] Closures
 - [ ] Expand the stdlib
-- [ ] Switch to packed expr representation for easier sharing
 - [ ] Think about how to express GC

@@ -139,17 +139,18 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(buf)))
         },
     },
+
     BuiltinFunc {
         name: "length",
-        callback: &|state: &State, expr: ExprRef, _env: &Env| -> Result<Value, Error> {
-            let ast = state.ast.borrow();
-            let args = match &ast[expr] {
-                Expr::Tup(tup) => tup,
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let args = match state.eval(expr, env)? {
+                Value::Tup(tup) => tup,
                 _ => bail!("`length`: expected tuple"),
             };
             Ok(Value::Lit(Literal::Num(args.len() as i64)))
         },
     },
+
     BuiltinFunc {
         name: "to-upper",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -157,6 +158,7 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
         },
     },
+
     BuiltinFunc {
         name: "to-lower",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -164,6 +166,7 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         },
     },
+
     BuiltinFunc {
         name: "concat",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -178,6 +181,7 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Tup(contents))
         },
     },
+
     BuiltinFunc {
         name: "tuple-fold",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
