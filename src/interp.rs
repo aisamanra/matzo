@@ -187,24 +187,20 @@ const BUILTINS: &[BuiltinFunc] = &[
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let val = state.eval(expr, env)?;
             let args = val.as_tup()?;
-            if args.len() != 3 {
+            if let [func, init, tup] = args {
+                let func = state.hnf(func)?;
+                let tup = state.hnf(tup)?;
+
+                let mut result = init.clone();
+                for t in tup.as_tup()? {
+                    let partial = state.eval_closure(func.as_closure()?, result)?;
+                    result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone())?);
+                }
+
+                state.hnf(&result)
+            } else {
                 bail!("`tuple-fold`: expected 3 arguments, got {}", args.len());
             }
-
-            let func = &args[0];
-            let init = &args[1];
-            let tup = &args[2];
-
-            let func = state.hnf(func)?;
-            let tup = state.hnf(tup)?;
-
-            let mut result = init.clone();
-            for t in tup.as_tup()? {
-                let partial = state.eval_closure(func.as_closure()?, result)?;
-                result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone())?);
-            }
-
-            state.hnf(&result)
         },
     },
 ];
