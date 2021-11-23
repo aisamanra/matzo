@@ -1,6 +1,6 @@
 use crate::ast::*;
 
-use anyhow::{Error,anyhow,bail};
+use anyhow::{anyhow, bail, Error};
 use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -139,7 +139,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(buf)))
         },
     },
-
     BuiltinFunc {
         name: "length",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -150,7 +149,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Num(args.len() as i64)))
         },
     },
-
     BuiltinFunc {
         name: "to-upper",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -158,7 +156,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
         },
     },
-
     BuiltinFunc {
         name: "to-lower",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -166,7 +163,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
         },
     },
-
     BuiltinFunc {
         name: "concat",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -181,7 +177,6 @@ const BUILTINS: &[BuiltinFunc] = &[
             Ok(Value::Tup(contents))
         },
     },
-
     BuiltinFunc {
         name: "tuple-fold",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
@@ -315,7 +310,10 @@ impl State {
     /// results to stdout.
     pub fn run(&self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
-        let stmts = self.parser.parse(&mut self.ast.borrow_mut(), lexed).map_err(|err| anyhow!("Got {:?}", err))?;
+        let stmts = self
+            .parser
+            .parse(&mut self.ast.borrow_mut(), lexed)
+            .map_err(|err| anyhow!("Got {:?}", err))?;
         let mut stdout = io::stdout();
         for stmt in stmts {
             self.execute(&stmt, &mut stdout)?;
@@ -580,6 +578,14 @@ impl State {
                 });
                 self.eval(*body, &Some(new_scope))
             }
+
+            Expr::Case(scrut, _) => {
+                let closure = Closure {
+                    func: expr_ref,
+                    scope: env.clone(),
+                };
+                self.eval_closure(&closure, Thunk::Expr(*scrut, env.clone()))
+            }
         }
     }
 
@@ -630,6 +636,7 @@ impl State {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
+            Expr::Case(_, cases) => cases,
             // see the note attached to the definition of `Closure`
             _ => bail!("INVARIANT FAILED"),
         };

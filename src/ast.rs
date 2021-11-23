@@ -180,6 +180,21 @@ impl ASTArena {
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
+
+            Expr::Case(expr, cases) => {
+                writeln!(f, "Case(")?;
+                self.indent(f, depth)?;
+                self.show_expr(&self[*expr], f, depth)?;
+                for case in cases {
+                    self.indent(f, depth + 2)?;
+                    self.show_pat(&case.pat, f)?;
+                    writeln!(f, " =>")?;
+                    self.indent(f, depth + 4)?;
+                    self.show_expr(&self[case.expr], f, depth + 4)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
         }
     }
 }
@@ -255,6 +270,7 @@ pub enum Expr {
     Let(bool, Name, ExprRef, ExprRef),
     Fun(Vec<Case>),
     Range(ExprRef, ExprRef),
+    Case(ExprRef, Vec<Case>),
     Nil,
 }
 

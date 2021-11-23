@@ -122,11 +122,18 @@ pub Leaf: ExprRef = {
     },
     "let" <fixed:"fix"?> <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
         ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
-    "{" <mut cs:(<Case> ";")*> <c:Case> "}" => {
-        cs.push(c);
-        ast.add_expr(Expr::Fun(cs))
-    },
+    "{" <cs:Cases> "}" =>
+        ast.add_expr(Expr::Fun(cs)),
+    "case" <e:Expr> "in" "{" <cs:Cases> "}" =>
+        ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+};
+
+pub Cases: Vec<Case> = {
+    <mut cs:(<Case> ";")*> <c:Case> => {
+        cs.push(c);
+        cs
+    }
 };
 
 pub Case: Case = {
