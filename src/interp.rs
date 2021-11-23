@@ -157,6 +157,14 @@ const BUILTINS: &[BuiltinFunc] = &[
         },
     },
     BuiltinFunc {
+        name: "capitalize",
+        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
+            let s = state.eval(expr, env)?;
+            Ok(Value::Lit(Literal::Str(titlecase::titlecase(s.as_str()?))))
+
+        },
+    },
+    BuiltinFunc {
         name: "to-lower",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let s = state.eval(expr, env)?;

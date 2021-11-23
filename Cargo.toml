@@ -27,6 +27,7 @@ rustyline = "*"
 ansi_term = "*"
 string-interner = "*"
 anyhow = "*"
+titlecase = "*"
 
 [build-dependencies]
 vergen = "*"
