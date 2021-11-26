@@ -1,7 +1,7 @@
 use crate::ast::*;
+use crate::rand::*;
 
 use anyhow::{anyhow, bail, Error};
-use rand::Rng;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -259,7 +259,7 @@ pub struct State {
     /// top-level definitions and builtins.
     root_scope: RefCell<HashMap<Name, Thunk>>,
     /// The thread-local RNG.
-    rand: RefCell<rand::rngs::ThreadRng>,
+    rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
     parser: crate::grammar::StmtsParser,
 }
@@ -276,7 +276,7 @@ impl State {
     pub fn new() -> State {
         let s = State {
             root_scope: RefCell::new(HashMap::new()),
-            rand: RefCell::new(rand::thread_rng()),
+            rand: RefCell::new(Box::new(DefaultRNG::new())),
             parser: crate::grammar::StmtsParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
@@ -428,7 +428,7 @@ impl State {
             // forcing it to a value if the assignment is `fixed`.
             Stmt::LitAssn(fixed, name, strs) => {
                 if *fixed {
-                    let choice = &strs[self.rand.borrow_mut().gen_range(0..strs.len())];
+                    let choice = &strs[self.rand.borrow_mut().gen_range_usize(0, strs.len())];
                     self.root_scope.borrow_mut().insert(
                         *name,
                         Thunk::Value(Value::Lit(Literal::Str(choice.clone()))),
@@ -544,7 +544,7 @@ impl State {
                 let from = self.eval(*from, env)?.as_num()?;
                 let to = self.eval(*to, env)?.as_num()?;
                 Ok(Value::Lit(Literal::Num(
-                    self.rand.borrow_mut().gen_range(from..=to),
+                    self.rand.borrow_mut().gen_range_i64(from, to+1),
                 )))
             }
 
@@ -748,7 +748,7 @@ impl State {
     // the weights
     fn choose(&self, choices: &[Choice], env: &Env) -> Result<Value, Error> {
         let max = choices.iter().map(Choice::weight).sum();
-        let mut choice = self.rand.borrow_mut().gen_range(0..max);
+        let mut choice = self.rand.borrow_mut().gen_range_i64(0, max);
         for ch in choices {
             if choice < ch.weight() {
                 return self.eval(ch.value, env);
