@@ -7,6 +7,7 @@ const TEST_PREFIX: &str = "
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 use crate::{grammar,lexer};
+use std::collections::BTreeMap;
 use std::io::Write;
 
 // to let us use pretty_assertions with strings, we write a newtype
@@ -24,6 +25,15 @@ impl<'a> core::fmt::Debug for StringWrapper<'a> {
 
 fn assert_eq(x: &str, y: &str) {
   assert_eq!(StringWrapper {wrapped: x}, StringWrapper {wrapped: y});
+}
+
+fn get_expectations(contents: &str) -> BTreeMap<u64, String> {
+  let map: BTreeMap<String, String> = serde_yaml::from_str(contents).unwrap();
+  let mut result = BTreeMap::new();
+  for (k, v) in map.into_iter() {
+    result.insert(k.parse().unwrap(), v);
+  }
+  result
 }
 ";
 
@@ -48,18 +58,15 @@ fn test_%PREFIX%() {
     );
   }
 
-  if let Ok(expected) = std::fs::read_to_string(\"%ROOT%/tests/%PREFIX%.output\") {
-    let possibilities = expected.lines().collect::<Vec<&str>>();
-    let mut buf = Vec::new();
-    for stmt in stmts {
-      state.execute(&stmt, &mut buf).unwrap();
-    }
-
-    let out = std::str::from_utf8(&buf).unwrap();
-    if !possibilities.contains(&out.trim()) {
-      panic!(\"Got output\\n  `{}`\\nbut expected one of the following:\\n{}\\n\",
-        &out.trim(),
-        possibilities.iter().map(|x| format!(\"  `{}`\\n\", x)).collect::<Vec<String>>().join(\", \"),
+  if let Ok(contents) = std::fs::read_to_string(\"%ROOT%/tests/%PREFIX%.output\") {
+    let expectations = get_expectations(&contents);
+    for (seed, expectation) in expectations {
+      let st = crate::interp::State::new_from_seed(seed);
+      let mut out = Vec::new();
+      st.run_with_writer(source, &mut out).unwrap();
+      assert_eq(
+        std::str::from_utf8(&out).unwrap().trim(),
+        expectation.trim(),
       );
     }
   }

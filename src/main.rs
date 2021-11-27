@@ -34,7 +34,7 @@ impl Opts {
             None
         };
         let mut files = Vec::new();
-        if let Some(fs) = matches.values_of("FILES") {
+        if let Some(fs) = matches.values_of("input") {
             files.extend(fs.map(|x| x.to_string()));
         }
         Opts { seed, files }

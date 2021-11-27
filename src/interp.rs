@@ -347,6 +347,20 @@ impl State {
         Ok(())
     }
 
+    /// Evaluate this string as a standalone program, writing the
+    /// results to the provided writer.
+    pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
+        let lexed = crate::lexer::tokens(src);
+        let stmts = self
+            .parser
+            .parse(&mut self.ast.borrow_mut(), lexed)
+            .map_err(|err| anyhow!("Got {:?}", err))?;
+        for stmt in stmts {
+            self.execute(&stmt, &mut *w)?;
+        }
+        Ok(())
+    }
+
     /// Evaluate this string as a fragment in a REPL, writing the
     /// results to stdout. One way this differs from the standalone
     /// program is that it actually tries parsing twice: first it
