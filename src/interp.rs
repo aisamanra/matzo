@@ -289,6 +289,24 @@ impl State {
         s
     }
 
+    /// This initializes a new `State` and adds all the builtin
+    /// functions to the root scope
+    pub fn new_from_seed(seed: u64) -> State {
+        let s = State {
+            root_scope: RefCell::new(HashMap::new()),
+            rand: RefCell::new(Box::new(SeededRNG::from_seed(seed))),
+            parser: crate::grammar::StmtsParser::new(),
+            ast: RefCell::new(ASTArena::new()),
+        };
+        for builtin in BUILTINS {
+            let sym = s.ast.borrow_mut().add_string(builtin.name);
+            s.root_scope
+                .borrow_mut()
+                .insert(sym, Thunk::Builtin(builtin));
+        }
+        s
+    }
+
     /// Get the underlying AST. (This is mostly useful for testing
     /// purposes, where we don't want to have a function do the
     /// parsing and evaluating for us at the same time.)
