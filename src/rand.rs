@@ -17,6 +17,12 @@ impl DefaultRNG {
     }
 }
 
+impl Default for DefaultRNG {
+    fn default() -> DefaultRNG {
+        Self::new()
+    }
+}
+
 impl MatzoRand for DefaultRNG {
     fn gen_range_i64(&mut self, min: i64, max: i64) -> i64 {
         self.rand.gen_range(min..max)

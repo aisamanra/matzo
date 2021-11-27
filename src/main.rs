@@ -28,11 +28,7 @@ impl Opts {
                  .takes_value(true))
             .get_matches();
 
-        let seed = if let Some(s) = matches.value_of("seed") {
-            Some(s.parse().unwrap())
-        } else {
-            None
-        };
+        let seed = matches.value_of("seed").map(|s| s.parse().unwrap());
         let mut files = Vec::new();
         if let Some(fs) = matches.values_of("input") {
             files.extend(fs.map(|x| x.to_string()));
