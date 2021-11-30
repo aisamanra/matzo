@@ -1,7 +1,26 @@
 use matzo::grammar;
 use matzo::lexer;
+use matzo::interp;
 
+use std::collections::BTreeMap;
 use std::io::Write;
+
+const MAX_RUN_EXPECTATIONS: u64 = 64;
+
+fn generate_runs(source: &str) -> Result<BTreeMap<String, String>, Box<dyn std::error::Error>> {
+    let mut found_results: BTreeMap<String, u64> = BTreeMap::new();
+    for seed in 0..MAX_RUN_EXPECTATIONS {
+        let state = interp::State::new_from_seed(seed);
+        let mut out = Vec::new();
+        state.run_with_writer(source, &mut out)?;
+        let out = std::str::from_utf8(&out).unwrap().trim().to_string();
+        if !found_results.contains_key(&out) {
+            let _ = found_results.insert(out, seed);
+        }
+    }
+    let output = found_results.into_iter().map(|(k, v)| (format!("{}", v), k)).collect();
+    Ok(output)
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     for exp in std::fs::read_dir("tests")? {
@@ -24,6 +43,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 for stmt in stmts {
                     writeln!(f, "{:#?}", stmt.show(&ast))?;
                 }
+            }
+
+            if let Ok(_) = std::fs::read_to_string(exp_filename("output")) {
+                println!("  generating output for {}", fname);
+                let map = generate_runs(&src)?;
+                let mut f = std::fs::File::create(exp_filename("output"))?;
+                writeln!(f, "# generated for {}", env!("VERGEN_GIT_SHA"))?;
+                writeln!(f, "{}", serde_yaml::to_string(&map)?)?;
             }
         }
     }
