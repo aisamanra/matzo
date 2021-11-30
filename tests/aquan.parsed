@@ -1,0 +1,40 @@
+LitAssn  cons, [  p  t  k  w  h  n ]
+
+Assn  vowel Cat(
+  Chc(
+    Str("a")
+    Str("e")
+    Str("i")
+    Str("o")
+    Str("u")
+  )
+  Chc(
+    4:
+      Str("")
+    Str("'")
+  )
+)
+
+Assn  syll Chc(
+  4:
+    Cat(
+      Var(cons)
+      Var(vowel)
+    )
+  Var(vowel)
+)
+
+Puts Cat(
+  Var(syll)
+  Ap(
+    Var(rep)
+    Tup(
+      Range(
+        Num(1)
+        Num(6)
+      )
+      Var(syll)
+    )
+  )
+)
+
