@@ -45,12 +45,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
 
-            if let Ok(_) = std::fs::read_to_string(exp_filename("output")) {
-                println!("  generating output for {}", fname);
+            if let Ok(existing) = std::fs::read_to_string(exp_filename("output")) {
+                let existing: BTreeMap<String, String> = serde_yaml::from_str(&existing)?;
+                print!("  generating output for {}: ", fname);
                 let map = generate_runs(&src)?;
-                let mut f = std::fs::File::create(exp_filename("output"))?;
-                writeln!(f, "# generated for {}", env!("VERGEN_GIT_SHA"))?;
-                writeln!(f, "{}", serde_yaml::to_string(&map)?)?;
+                if map != existing {
+                    let mut f = std::fs::File::create(exp_filename("output"))?;
+                    writeln!(f, "# generated for {}", env!("VERGEN_GIT_SHA"))?;
+                    writeln!(f, "{}", serde_yaml::to_string(&map)?)?;
+                    println!("generated {} cases", map.len());
+                } else {
+                    println!("no changes needed");
+                }
             }
         }
     }
