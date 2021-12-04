@@ -68,6 +68,8 @@ pub Name: Name = {
         Located::new(ast.add_string(str), file, Span { start: start as u32, end: end as u32 }),
 };
 
+pub ExprRef = Located<Expr>;
+
 pub Expr: ExprId = {
     <mut ts:(<Choice> "|")*> <t:Choice> => {
         if ts.len() == 0 {

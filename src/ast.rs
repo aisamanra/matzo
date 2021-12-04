@@ -1,5 +1,5 @@
 use std::fmt;
-pub use crate::lexer::{FileRef, Located};
+pub use crate::lexer::{FileRef, Located, Span};
 
 pub type StrRef = string_interner::DefaultSymbol;
 pub type Name = Located<StrRef>;
@@ -75,6 +75,37 @@ impl ASTArena {
         let idx = self.files.len();
         self.files.push(file);
         FileRef { idx }
+    }
+
+    pub fn get_line(&self, file: FileRef, span: Span) -> String {
+        let mut line_number = 0;
+        let mut start_of_line = 0;
+        let mut end_of_line = None;
+        let src = &self.files[file.idx];
+
+        for (i, ch) in src.char_indices() {
+            if ch == '\n' {
+                line_number += 1;
+                if i < span.start as usize {
+                    start_of_line = i;
+                }
+                if i >= span.end as usize && end_of_line.is_none() {
+                    end_of_line = Some(i);
+                }
+            }
+        }
+        let end_of_line = end_of_line.unwrap_or_else(|| src.len());
+
+        let mut result = format!("{:3} |", line_number);
+        result.push_str(&src[start_of_line .. end_of_line]);
+        result.push_str("\n     ");
+        for _ in start_of_line..(span.start as usize) {
+            result.push(' ');
+        }
+        for _ in span.start..span.end {
+            result.push('^');
+        }
+        result
     }
 
     fn indent(&self, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {

@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
+use std::io::Write;
 use std::rc::Rc;
 
 /// A `Value` is a representation of the result of evaluation. Note
@@ -125,10 +126,14 @@ const BUILTINS: &[BuiltinFunc] = &[
                 let ast = state.ast.borrow();
                 let args = match &ast[expr] {
                     Expr::Tup(tup) => tup,
-                    _ => bail!("`rep`: expected tuple"),
+                    _ => {
+                        let span = state.ast.borrow().get_line(expr.file, expr.span);
+                        bail!("`rep`: expected tuple\n{}", span)
+                    }
                 };
                 if args.len() != 2 {
-                    bail!("`rep`: expected two arguments, got {}", args.len())
+                    let span = state.ast.borrow().get_line(expr.file, expr.span);
+                    bail!("`rep`: expected two arguments, got {}\n{}", args.len(), span)
                 }
                 (args[0], args[1])
             };
@@ -263,6 +268,8 @@ pub struct State {
     rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
     parser: crate::grammar::StmtsParser,
+    /// The instantiated parser used to parse Matzo programs
+    expr_parser: crate::grammar::ExprRefParser,
 }
 
 impl Default for State {
@@ -279,6 +286,7 @@ impl State {
             root_scope: RefCell::new(HashMap::new()),
             rand: RefCell::new(Box::new(DefaultRNG::new())),
             parser: crate::grammar::StmtsParser::new(),
+            expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
         for builtin in BUILTINS {
@@ -297,6 +305,7 @@ impl State {
             root_scope: RefCell::new(HashMap::new()),
             rand: RefCell::new(Box::new(SeededRNG::from_seed(seed))),
             parser: crate::grammar::StmtsParser::new(),
+            expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
         for builtin in BUILTINS {
@@ -327,7 +336,10 @@ impl State {
             }
         } else {
             match self.root_scope.borrow().get(&name.item) {
-                None => bail!("no such thing: {}", &self.ast.borrow()[name.item]),
+                None => {
+                    let span = self.ast.borrow().get_line(name.file, name.span);
+                    bail!("no such thing: {}\n{}", &self.ast.borrow()[name.item], span)
+                }
                 Some(ne) => Ok(ne.clone()),
             }
         }
@@ -378,22 +390,27 @@ impl State {
             let mut ast = self.ast.borrow_mut();
             self.parser.parse(&mut ast, file, lexed)
         };
-        let stmts = match stmts {
-            Ok(stmts) => stmts,
+        match stmts {
+            Ok(stmts) => {
+                for stmt in stmts {
+                    self.execute(&stmt, io::stdout())?;
+                }
+            },
             Err(err) => {
-                let with_puts = format!("puts {}", src);
-                let lexed = crate::lexer::tokens(&with_puts);
-                let file = self.ast.borrow_mut().add_file(src.to_string());
-                if let Ok(stmts) = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed) {
-                    stmts
+                let lexed = crate::lexer::tokens(src);
+                let expr = {
+                    let mut ast = self.ast.borrow_mut();
+                    self.expr_parser.parse(&mut ast, file, lexed)
+                };
+                if let Ok(expr) = expr {
+                    let val = self.eval(expr, &None)?;
+                    let val = self.force(val)?;
+                    writeln!(io::stdout(), "{}", val.to_string())?;
                 } else {
                     bail!("{:?}", err);
                 }
             }
         };
-        for stmt in stmts {
-            self.execute(&stmt, io::stdout())?;
-        }
         Ok(())
     }
 
