@@ -1,10 +1,11 @@
 use std::fmt;
-pub use crate::lexer::Located;
+pub use crate::lexer::{FileRef, Located};
 
 pub type StrRef = string_interner::DefaultSymbol;
 pub type Name = Located<StrRef>;
 
 pub struct ASTArena {
+    files: Vec<String>,
     strings: string_interner::StringInterner,
     exprs: Vec<Expr>,
 }
@@ -18,6 +19,7 @@ impl Default for ASTArena {
 impl ASTArena {
     pub fn new() -> ASTArena {
         ASTArena {
+            files: Vec::new(),
             strings: string_interner::StringInterner::new(),
             exprs: vec![Expr::Nil],
         }
@@ -67,6 +69,12 @@ impl ASTArena {
                 writeln!(f, "]")
             }
         }
+    }
+
+    pub fn add_file(&mut self, file: String) -> FileRef {
+        let idx = self.files.len();
+        self.files.push(file);
+        FileRef { idx }
     }
 
     fn indent(&self, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {

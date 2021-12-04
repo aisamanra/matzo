@@ -337,9 +337,10 @@ impl State {
     /// results to stdout.
     pub fn run(&self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
+        let file = self.ast.borrow_mut().add_file(src.to_string());
         let stmts = self
             .parser
-            .parse(&mut self.ast.borrow_mut(), lexed)
+            .parse(&mut self.ast.borrow_mut(), file, lexed)
             .map_err(|err| anyhow!("Got {:?}", err))?;
         let mut stdout = io::stdout();
         for stmt in stmts {
@@ -352,9 +353,10 @@ impl State {
     /// results to the provided writer.
     pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
+        let file = self.ast.borrow_mut().add_file(src.to_string());
         let stmts = self
             .parser
-            .parse(&mut self.ast.borrow_mut(), lexed)
+            .parse(&mut self.ast.borrow_mut(), file, lexed)
             .map_err(|err| anyhow!("Got {:?}", err))?;
         for stmt in stmts {
             self.execute(&stmt, &mut *w)?;
@@ -371,16 +373,18 @@ impl State {
     /// simply types an expression.
     pub fn run_repl(&self, src: &str) -> Result<(), Error> {
         let lexed = crate::lexer::tokens(src);
+        let file = self.ast.borrow_mut().add_file(src.to_string());
         let stmts = {
             let mut ast = self.ast.borrow_mut();
-            self.parser.parse(&mut ast, lexed)
+            self.parser.parse(&mut ast, file, lexed)
         };
         let stmts = match stmts {
             Ok(stmts) => stmts,
             Err(err) => {
                 let with_puts = format!("puts {}", src);
                 let lexed = crate::lexer::tokens(&with_puts);
-                if let Ok(stmts) = self.parser.parse(&mut self.ast.borrow_mut(), lexed) {
+                let file = self.ast.borrow_mut().add_file(src.to_string());
+                if let Ok(stmts) = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed) {
                     stmts
                 } else {
                     bail!("{:?}", err);
@@ -477,6 +481,7 @@ impl State {
                         Choice {
                             weight: None,
                             value: Located {
+                                file: s.file,
                                 span: s.span,
                                 item: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(str))),
                             },
@@ -484,6 +489,7 @@ impl State {
                     })
                     .collect();
                 let choices = Located {
+                    file: choices.first().unwrap().value.file,
                     span: Span {
                         start: choices.first().unwrap().value.span.start,
                         end: choices.last().unwrap().value.span.end,

@@ -1,7 +1,7 @@
 use crate::ast::*;
 use crate::lexer::*;
 
-grammar<'input>(ast: &mut ASTArena);
+grammar<'input>(ast: &mut ASTArena, file: FileRef);
 
 extern {
     type Location = usize;
@@ -65,7 +65,7 @@ pub AtomLit: string_interner::DefaultSymbol = {
 
 pub Name: Name = {
     <start: @L> <str:"var"> <end: @R> =>
-        Located::new(ast.add_string(str), Span { start: start as u32, end: end as u32 }),
+        Located::new(ast.add_string(str), file, Span { start: start as u32, end: end as u32 }),
 };
 
 pub Expr: ExprId = {
@@ -161,5 +161,5 @@ pub Literal: Literal = {
 #[inline]
 Located<T>: Located<T> = {
     <start: @L> <data: T> <end: @R> =>
-        Located::new(data, Span { start: start as u32, end: end as u32 }),
+        Located::new(data, file, Span { start: start as u32, end: end as u32 }),
 };

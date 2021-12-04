@@ -1,5 +1,10 @@
 use logos::{Lexer, Logos};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct FileRef {
+    pub idx: usize,
+}
+
 /// A location in a source file
 #[derive(Debug, Clone, Copy)]
 pub struct Span {
@@ -22,21 +27,23 @@ impl Span {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Located<T> {
-    pub span: Span,
     pub item: T,
+    pub span: Span,
+    pub file: FileRef,
 }
 
 impl<T> Located<T> {
-    pub fn new(item: T, span: Span) -> Located<T> {
-        Located { span, item }
+    pub fn new(item: T, file: FileRef, span: Span) -> Located<T> {
+        Located { span, file, item }
     }
 }
 
 impl <T: Clone> Located<T> {
     pub fn map<R>(&self, func: impl FnOnce(T) -> R) -> Located<R> {
         Located {
-            span: self.span,
             item: func(self.item.clone()),
+            span: self.span,
+            file: self.file,
         }
     }
 }
