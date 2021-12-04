@@ -1,6 +1,8 @@
 use std::fmt;
+pub use crate::lexer::Located;
 
-pub type Name = string_interner::DefaultSymbol;
+pub type StrRef = string_interner::DefaultSymbol;
+pub type Name = Located<StrRef>;
 
 pub struct ASTArena {
     strings: string_interner::StringInterner,
@@ -21,17 +23,17 @@ impl ASTArena {
         }
     }
 
-    pub fn expr_nil(&self) -> ExprRef {
-        ExprRef { idx: 0 }
+    pub fn expr_nil(&self) -> ExprId {
+        ExprId { idx: 0 }
     }
 
-    pub fn add_expr(&mut self, e: Expr) -> ExprRef {
+    pub fn add_expr(&mut self, e: Expr) -> ExprId {
         let idx = self.exprs.len();
         self.exprs.push(e);
-        ExprRef { idx }
+        ExprId { idx }
     }
 
-    pub fn add_string(&mut self, s: &str) -> Name {
+    pub fn add_string(&mut self, s: &str) -> string_interner::DefaultSymbol {
         self.strings.get_or_intern(s)
     }
 
@@ -39,27 +41,28 @@ impl ASTArena {
         match stmt {
             Stmt::Puts(expr) => {
                 write!(f, "Puts ")?;
-                self.show_expr(&self[*expr], f, 0)
+                self.show_expr(&self[expr.item], f, 0)
             }
-            Stmt::Fix(name) => writeln!(f, "Fix {}", &self[*name]),
+            Stmt::Fix(name) => writeln!(f, "Fix {}", &self[name.item]),
             Stmt::Assn(fixed, name, expr) => {
                 write!(
                     f,
                     "Assn {} {} ",
                     if *fixed { "fixed" } else { "" },
-                    &self[*name]
+                    &self[name.item]
                 )?;
-                self.show_expr(&self[*expr], f, 0)
+                self.show_expr(&self[expr.item], f, 0)
             }
             Stmt::LitAssn(fixed, name, strs) => {
                 write!(
                     f,
                     "LitAssn {} {}, [ ",
                     if *fixed { "fixed" } else { "" },
-                    &self[*name],
+                    &self[name.item],
                 )?;
                 for str in strs.iter() {
-                    write!(f, " {} ", str)?;
+                    let s = &self[str.item];
+                    write!(f, " {} ", s)?;
                 }
                 writeln!(f, "]")
             }
@@ -76,8 +79,8 @@ impl ASTArena {
     fn show_pat(&self, pat: &Pat, f: &mut fmt::Formatter) -> fmt::Result {
         match pat {
             Pat::Wildcard => write!(f, "_"),
-            Pat::Var(n) => write!(f, "{}", &self[*n]),
-            Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[*n]),
+            Pat::Var(n) => write!(f, "{}", &self[n.item]),
+            Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[n.item]),
             Pat::Lit(lit) => write!(f, "{:?}", lit),
             Pat::Tup(tup) => {
                 write!(f, "Tup( ")?;
@@ -93,8 +96,8 @@ impl ASTArena {
     fn show_expr(&self, expr: &Expr, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
         match expr {
             Expr::Nil => writeln!(f, "Nil"),
-            Expr::Var(v) => writeln!(f, "Var({})", &self[*v]),
-            Expr::Lit(Literal::Atom(n)) => writeln!(f, "Lit(Atom({}))", &self[*n]),
+            Expr::Var(v) => writeln!(f, "Var({})", &self[v.item]),
+            Expr::Lit(Literal::Atom(n)) => writeln!(f, "Lit(Atom({}))", &self[n.item]),
             Expr::Lit(lit) => writeln!(f, "{:?}", lit),
             Expr::Range(from, to) => {
                 writeln!(f, "Range(")?;
@@ -158,7 +161,7 @@ impl ASTArena {
                     f,
                     "Let({}{}",
                     if *fixed { "fixed " } else { "" },
-                    &self[*name]
+                    &self[name.item]
                 )?;
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*expr], f, depth + 2)?;
@@ -211,6 +214,14 @@ impl std::ops::Index<ExprRef> for ASTArena {
     type Output = Expr;
 
     fn index(&self, rf: ExprRef) -> &Self::Output {
+        &self.exprs[rf.item.idx]
+    }
+}
+
+impl std::ops::Index<ExprId> for ASTArena {
+    type Output = Expr;
+
+    fn index(&self, rf: ExprId) -> &Self::Output {
         &self.exprs[rf.idx]
     }
 }
@@ -236,7 +247,7 @@ impl<'a> std::fmt::Debug for Printable<'a, Expr> {
 }
 
 /// A top-level Matzo statement
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     /// evaluate and print the value of an expression
     Puts(ExprRef),
@@ -246,7 +257,7 @@ pub enum Stmt {
     Assn(bool, Name, ExprRef),
     /// assign one of a set of strings to a name, which may or may not
     /// be forced
-    LitAssn(bool, Name, Vec<String>),
+    LitAssn(bool, Name, Vec<Name>),
 }
 
 impl Stmt {
@@ -259,7 +270,7 @@ impl Stmt {
 }
 
 /// A Matzo expression
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Var(Name),
     Cat(Vec<ExprRef>),
@@ -274,20 +285,28 @@ pub enum Expr {
     Nil,
 }
 
+pub type ExprRef = Located<ExprId>;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ExprRef {
+pub struct ExprId {
     idx: usize,
 }
 
+impl ExprId {
+    pub fn nil(&self) -> bool {
+        self.idx == 0
+    }
+}
+
 /// A single case in an anonymous function or `case` statement
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Case {
     pub pat: Pat,
     pub expr: ExprRef,
 }
 
 /// A pattern, e.g. in an anonymous function or `case` statement
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Pat {
     Var(Name),
     Wildcard,
@@ -297,7 +316,7 @@ pub enum Pat {
 
 /// A single element in a choice, with an optional weight (which
 /// defaults to 1) and a value
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Choice {
     pub weight: Option<i64>,
     pub value: ExprRef,
@@ -311,9 +330,20 @@ impl Choice {
 }
 
 /// An atomic literal: a string, a number, or an atom
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     Str(String),
     Atom(Name),
     Num(i64),
+}
+
+impl PartialEq for Literal {
+    fn eq(&self, other: &Literal) -> bool {
+        match (self, other) {
+            (Literal::Str(s1), Literal::Str(s2)) => s1 == s2,
+            (Literal::Atom(a1), Literal::Atom(a2)) => a1.item == a2.item,
+            (Literal::Num(n1), Literal::Num(n2)) => n1 == n2,
+            (_, _) => false,
+        }
+    }
 }

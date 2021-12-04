@@ -47,9 +47,9 @@ pub Stmts: Vec<Stmt> = {
 };
 
 pub Stmt: Stmt = {
-    "puts" <Expr> => Stmt::Puts(<>),
-    <fixed:"fix"?> <name:Name> ":=" <expr:Expr> => Stmt::Assn(fixed.is_some(), name, expr),
-    <fixed:"fix"?> <name:Name> "::=" <strs:(<AtomLit>)*> =>
+    "puts" <Located<Expr>> => Stmt::Puts(<>),
+    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> => Stmt::Assn(fixed.is_some(), name, expr),
+    <fixed:"fix"?> <name:Name> "::=" <strs:(<Located<AtomLit>>)*> =>
         Stmt::LitAssn(
             fixed.is_some(),
             name,
@@ -58,19 +58,20 @@ pub Stmt: Stmt = {
     "fix" <Name> => Stmt::Fix(<>),
 };
 
-pub AtomLit: String = {
-    "var" => <>.to_string(),
-    "atom" => <>.to_string(),
+pub AtomLit: string_interner::DefaultSymbol = {
+    "var" => ast.add_string(<>),
+    "atom" => ast.add_string(<>),
 };
 
 pub Name: Name = {
-    "var" => ast.add_string(<>),
+    <start: @L> <str:"var"> <end: @R> =>
+        Located::new(ast.add_string(str), Span { start: start as u32, end: end as u32 }),
 };
 
-pub Expr: ExprRef = {
+pub Expr: ExprId = {
     <mut ts:(<Choice> "|")*> <t:Choice> => {
         if ts.len() == 0 {
-            t.value
+            t.value.item
         } else {
             ts.push(t);
             ast.add_expr(Expr::Chc(ts))
@@ -79,52 +80,52 @@ pub Expr: ExprRef = {
 };
 
 pub Choice: Choice = {
-    <weight:"num"> ":" <value:Term> => Choice {
+    <weight:"num"> ":" <value:Located<Term>> => Choice {
         weight: Some(weight),
         value
     },
-    <value:Term> => Choice {
+    <value:Located<Term>> => Choice {
         weight: None,
         value
     }
 };
 
-pub Term: ExprRef = {
-    <mut bs:(<Branch>)*> => {
+pub Term: ExprId = {
+    <mut bs:(<Located<Branch>>)*> => {
         match bs.len() {
             0 => ast.expr_nil(),
-            1 => bs.pop().unwrap(),
+            1 => bs.pop().unwrap().item,
             _ => ast.add_expr(Expr::Cat(<>)),
         }
     }
 };
 
-pub Branch: ExprRef = {
-    <l:Branch> "." <r:Subbranch> => ast.add_expr(Expr::Ap(l, r)),
+pub Branch: ExprId = {
+    <l:Located<Branch>> "." <r:Located<Subbranch>> => ast.add_expr(Expr::Ap(l, r)),
     <Subbranch> => <>,
 };
 
-pub Subbranch: ExprRef = {
-    <l:Subbranch> ".." <r:Leaf> => ast.add_expr(Expr::Range(l, r)),
+pub Subbranch: ExprId = {
+    <l:Located<Subbranch>> ".." <r:Located<Leaf>> => ast.add_expr(Expr::Range(l, r)),
     <Leaf> => <>,
 }
 
-pub Leaf: ExprRef = {
+pub Leaf: ExprId = {
     <Literal> => ast.add_expr(Expr::Lit(<>)),
     <Name> => ast.add_expr(Expr::Var(<>)),
-    "<" <mut es:(<Expr> ",")*> <e:Expr> ">" => {
-        if es.len() == 0 && e == ast.expr_nil() {
+    "<" <mut es:(<Located<Expr>> ",")*> <e:Located<Expr>> ">" => {
+        if es.len() == 0 && e.item.nil() {
             ast.add_expr(Expr::Tup(Vec::new()))
         } else {
             es.push(e);
             ast.add_expr(Expr::Tup(es))
         }
     },
-    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Expr> "in" "{" <e2:Expr> "}" =>
+    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Located<Expr>> "in" "{" <e2:Located<Expr>> "}" =>
         ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
     "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
-    "case" <e:Expr> "in" "{" <cs:Cases> "}" =>
+    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
 };
@@ -137,7 +138,7 @@ pub Cases: Vec<Case> = {
 };
 
 pub Case: Case = {
-    <pat:Pat> "=>" <expr:Expr> => Case { pat, expr },
+    <pat:Pat> "=>" <expr:Located<Expr>> => Case { pat, expr },
 };
 
 pub Pat: Pat = {
@@ -154,5 +155,11 @@ pub Pat: Pat = {
 pub Literal: Literal = {
     "num" => Literal::Num(<>),
     "str" => Literal::Str(<>),
-    "atom" => Literal::Atom(ast.add_string(<>)),
+    <atom:Located<"atom">> => Literal::Atom(atom.map(|x| ast.add_string(x))),
+};
+
+#[inline]
+Located<T>: Located<T> = {
+    <start: @L> <data: T> <end: @R> =>
+        Located::new(data, Span { start: start as u32, end: end as u32 }),
 };

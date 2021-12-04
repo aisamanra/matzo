@@ -1,4 +1,5 @@
 use crate::ast::*;
+use crate::lexer::Span;
 use crate::rand::*;
 
 use anyhow::{anyhow, bail, Error};
@@ -8,7 +9,7 @@ use std::fmt;
 use std::io;
 use std::rc::Rc;
 
-/// A `Value` is a representation of the resut of evaluation. Note
+/// A `Value` is a representation of the result of evaluation. Note
 /// that a `Value` is a representation of something in _weak head
 /// normal form_: i.e. for compound expressions (right now just
 /// tuples) it might contain other values but it might contain
@@ -231,7 +232,7 @@ type Env = Option<Rc<Scope>>;
 /// `Thunk`s, along with a parent pointer.
 #[derive(Debug)]
 pub struct Scope {
-    vars: HashMap<Name, Thunk>,
+    vars: HashMap<StrRef, Thunk>,
     parent: Env,
 }
 
@@ -257,7 +258,7 @@ pub struct State {
     ast: RefCell<ASTArena>,
     /// The root scope of the program, which contains all the
     /// top-level definitions and builtins.
-    root_scope: RefCell<HashMap<Name, Thunk>>,
+    root_scope: RefCell<HashMap<StrRef, Thunk>>,
     /// The thread-local RNG.
     rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
@@ -319,14 +320,14 @@ impl State {
     /// indicates the missing name.
     fn lookup(&self, env: &Env, name: Name) -> Result<Thunk, Error> {
         if let Some(env) = env {
-            if let Some(ne) = env.vars.get(&name) {
+            if let Some(ne) = env.vars.get(&name.item) {
                 Ok(ne.clone())
             } else {
                 self.lookup(&env.parent, name)
             }
         } else {
-            match self.root_scope.borrow().get(&name) {
-                None => bail!("no such thing: {}", &self.ast.borrow()[name]),
+            match self.root_scope.borrow().get(&name.item) {
+                None => bail!("no such thing: {}", &self.ast.borrow()[name.item]),
                 Some(ne) => Ok(ne.clone()),
             }
         }
@@ -440,7 +441,7 @@ impl State {
                 let val = self.force(val)?;
                 self.root_scope
                     .borrow_mut()
-                    .insert(*name, Thunk::Value(val));
+                    .insert(name.item, Thunk::Value(val));
             }
 
             // assign a given expression to a name, forcing it to a
@@ -453,7 +454,7 @@ impl State {
                 } else {
                     Thunk::Expr(*expr, None)
                 };
-                self.root_scope.borrow_mut().insert(*name, thunk);
+                self.root_scope.borrow_mut().insert(name.item, thunk);
             }
 
             // assign a simple disjunction of strings to a name,
@@ -461,27 +462,37 @@ impl State {
             Stmt::LitAssn(fixed, name, strs) => {
                 if *fixed {
                     let choice = &strs[self.rand.borrow_mut().gen_range_usize(0, strs.len())];
+                    let str = self.ast.borrow()[choice.item].to_string();
                     self.root_scope.borrow_mut().insert(
-                        *name,
-                        Thunk::Value(Value::Lit(Literal::Str(choice.clone()))),
+                        name.item,
+                        Thunk::Value(Value::Lit(Literal::Str(str))),
                     );
                     return Ok(());
                 }
 
-                let choices = strs
+                let choices: Vec<Choice> = strs
                     .iter()
-                    .map(|s| Choice {
-                        weight: None,
-                        value: self
-                            .ast
-                            .borrow_mut()
-                            .add_expr(Expr::Lit(Literal::Str(s.clone()))),
+                    .map(|s| {
+                        let str = self.ast.borrow()[s.item].to_string();
+                        Choice {
+                            weight: None,
+                            value: Located {
+                                span: s.span,
+                                item: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(str))),
+                            },
+                        }
                     })
                     .collect();
-                let choices = self.ast.borrow_mut().add_expr(Expr::Chc(choices));
+                let choices = Located {
+                    span: Span {
+                        start: choices.first().unwrap().value.span.start,
+                        end: choices.last().unwrap().value.span.end,
+                    },
+                    item: self.ast.borrow_mut().add_expr(Expr::Chc(choices)),
+                };
                 self.root_scope
                     .borrow_mut()
-                    .insert(*name, Thunk::Expr(choices, None));
+                    .insert(name.item, Thunk::Expr(choices, None));
             }
         }
         Ok(())
@@ -516,7 +527,7 @@ impl State {
     /// Given an `ExprRef` and an environment, fetch that expression
     /// and then evalute it in that environment
     fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
-        let expr = &self.ast.borrow()[expr_ref];
+        let expr = &self.ast.borrow()[expr_ref.item];
         match expr {
             // literals should be mostly cheap-ish to copy, so a
             // literal evaluates to a `Value` that's a copy of the
@@ -608,9 +619,9 @@ impl State {
                 if *fixed {
                     let val = self.eval(*val, env)?;
                     let val = self.force(val)?;
-                    new_scope.insert(*name, Thunk::Value(val));
+                    new_scope.insert(name.item, Thunk::Value(val));
                 } else {
-                    new_scope.insert(*name, Thunk::Expr(*val, env.clone()));
+                    new_scope.insert(name.item, Thunk::Expr(*val, env.clone()));
                 };
                 let new_scope = Rc::new(Scope {
                     vars: new_scope,
@@ -695,7 +706,7 @@ impl State {
             // build a new scope from the bindings discovered
             let mut new_scope = HashMap::new();
             for (name, binding) in bindings {
-                new_scope.insert(name, binding);
+                new_scope.insert(name.item, binding);
             }
 
             let new_scope = Rc::new(Scope {

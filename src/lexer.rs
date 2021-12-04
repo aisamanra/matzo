@@ -1,5 +1,46 @@
 use logos::{Lexer, Logos};
 
+/// A location in a source file
+#[derive(Debug, Clone, Copy)]
+pub struct Span {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl Span {
+    pub fn empty() -> Span {
+        Span {
+            start: u32::MAX,
+            end: u32::MAX,
+        }
+    }
+
+    pub fn exists(&self) -> bool {
+        self.start != u32::MAX && self.end != u32::MAX
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Located<T> {
+    pub span: Span,
+    pub item: T,
+}
+
+impl<T> Located<T> {
+    pub fn new(item: T, span: Span) -> Located<T> {
+        Located { span, item }
+    }
+}
+
+impl <T: Clone> Located<T> {
+    pub fn map<R>(&self, func: impl FnOnce(T) -> R) -> Located<R> {
+        Located {
+            span: self.span,
+            item: func(self.item.clone()),
+        }
+    }
+}
+
 fn parse_num<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<i64> {
     let slice = lex.slice();
     slice.parse().ok()
