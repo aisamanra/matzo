@@ -24,42 +24,47 @@ pub enum Value {
     Nil,
 }
 
-impl fmt::Display for Value {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.with_str(|s| write!(f, "{}", s))
+impl Value {
+    fn to_string(&self, ast: &ASTArena) -> String {
+        self.with_str(ast, |s| s.to_string())
     }
 }
+// impl fmt::Display for Value {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         self.with_str(|s| write!(f, "{}", s))
+//     }
+// }
 
 impl Value {
     /// Convert this value to a Rust integer, failing otherwise
-    fn as_num(&self) -> Result<i64, Error> {
+    fn as_num(&self, ast: &ASTArena) -> Result<i64, Error> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
-            _ => self.with_str(|s| bail!("Expected number, got {}", s)),
+            _ => self.with_str(ast, |s| bail!("Expected number, got {}", s)),
         }
     }
 
     /// Convert this value to a Rust string, failing otherwise
-    fn as_str(&self) -> Result<&str, Error> {
+    fn as_str(&self, ast: &ASTArena) -> Result<&str, Error> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
-            _ => self.with_str(|s| bail!("Expected string, got {}", s)),
+            _ => self.with_str(ast, |s| bail!("Expected string, got {}", s)),
         }
     }
 
     /// Convert this value to a Rust slice, failing otherwise
-    fn as_tup(&self) -> Result<&[Thunk], Error> {
+    fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], Error> {
         match self {
             Value::Tup(vals) => Ok(vals),
-            _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
+            _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
         }
     }
 
     /// Convert this value to a closure, failing otherwise
-    fn as_closure(&self) -> Result<&Closure, Error> {
+    fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, Error> {
         match self {
             Value::Closure(closure) => Ok(closure),
-            _ => self.with_str(|s| bail!("Expected tuple, got {}", s)),
+            _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
         }
     }
 
@@ -68,11 +73,11 @@ impl Value {
     /// not completely forced already: indeed, this can't, since it
     /// doesn't have access to the `State`. Unevaluated fragments of
     /// the value will be printed as `#<unevaluated>`.
-    fn with_str<U>(&self, f: impl FnOnce(&str) -> U) -> U {
+    fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
         match self {
             Value::Nil => f(""),
             Value::Lit(Literal::Str(s)) => f(s),
-            Value::Lit(Literal::Atom(s)) => f(&format!("{:?}", s)),
+            Value::Lit(Literal::Atom(s)) => f(&format!("{}", &ast[s.item])),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
             Value::Tup(values) => {
                 let mut buf = String::new();
@@ -82,7 +87,7 @@ impl Value {
                         buf.push_str(", ");
                     }
                     match val {
-                        Thunk::Value(v) => buf.push_str(&v.to_string()),
+                        Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
                         Thunk::Expr(..) => buf.push_str("#<unevaluated>"),
                         Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.name)),
                     }
@@ -138,9 +143,9 @@ const BUILTINS: &[BuiltinFunc] = &[
                 (args[0], args[1])
             };
             let mut buf = String::new();
-            let num = state.eval(rep, env)?.as_num()?;
+            let num = state.eval(rep, env)?.as_num(&state.ast.borrow())?;
             for _ in 0..num {
-                buf.push_str(&state.eval(expr, env)?.as_str()?.to_string());
+                buf.push_str(&state.eval(expr, env)?.as_str(&state.ast.borrow())?.to_string());
             }
             Ok(Value::Lit(Literal::Str(buf)))
         },
@@ -159,14 +164,14 @@ const BUILTINS: &[BuiltinFunc] = &[
         name: "to-upper",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(s.as_str()?.to_uppercase())))
+            Ok(Value::Lit(Literal::Str(s.as_str(&state.ast.borrow())?.to_uppercase())))
         },
     },
     BuiltinFunc {
         name: "capitalize",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(titlecase::titlecase(s.as_str()?))))
+            Ok(Value::Lit(Literal::Str(titlecase::titlecase(s.as_str(&state.ast.borrow())?))))
 
         },
     },
@@ -174,17 +179,17 @@ const BUILTINS: &[BuiltinFunc] = &[
         name: "to-lower",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(s.as_str()?.to_lowercase())))
+            Ok(Value::Lit(Literal::Str(s.as_str(&state.ast.borrow())?.to_lowercase())))
         },
     },
     BuiltinFunc {
         name: "concat",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let val = state.eval(expr, env)?;
-            let tup = val.as_tup()?;
+            let tup = val.as_tup(&state.ast.borrow())?;
             let mut contents = Vec::new();
             for elem in tup {
-                for th in state.hnf(elem)?.as_tup()? {
+                for th in state.hnf(elem)?.as_tup(&state.ast.borrow())? {
                     contents.push(th.clone());
                 }
             }
@@ -195,15 +200,15 @@ const BUILTINS: &[BuiltinFunc] = &[
         name: "tuple-fold",
         callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
             let val = state.eval(expr, env)?;
-            let args = val.as_tup()?;
+            let args = val.as_tup(&state.ast.borrow())?;
             if let [func, init, tup] = args {
                 let func = state.hnf(func)?;
                 let tup = state.hnf(tup)?;
 
                 let mut result = init.clone();
-                for t in tup.as_tup()? {
-                    let partial = state.eval_closure(func.as_closure()?, result)?;
-                    result = Thunk::Value(state.eval_closure(partial.as_closure()?, t.clone())?);
+                for t in tup.as_tup(&state.ast.borrow())? {
+                    let partial = state.eval_closure(func.as_closure(&state.ast.borrow())?, result)?;
+                    result = Thunk::Value(state.eval_closure(partial.as_closure(&state.ast.borrow())?, t.clone())?);
                 }
 
                 state.hnf(&result)
@@ -405,7 +410,7 @@ impl State {
                 if let Ok(expr) = expr {
                     let val = self.eval(expr, &None)?;
                     let val = self.force(val)?;
-                    writeln!(io::stdout(), "{}", val.to_string())?;
+                    writeln!(io::stdout(), "{}", val.to_string(&self.ast.borrow()))?;
                 } else {
                     bail!("{:?}", err);
                 }
@@ -442,7 +447,7 @@ impl State {
             Stmt::Puts(expr) => {
                 let val = self.eval(*expr, &None)?;
                 let val = self.force(val)?;
-                writeln!(output, "{}", val.to_string()).unwrap();
+                writeln!(output, "{}", val.to_string(&self.ast.borrow())).unwrap();
             }
 
             // Look up the provided name, and if it's not already
@@ -577,7 +582,7 @@ impl State {
                     for expr in cat {
                         let val = self.eval(*expr, env)?;
                         let val = self.force(val)?;
-                        buf.push_str(&val.to_string());
+                        buf.push_str(&val.to_string(&self.ast.borrow()));
                     }
                     Ok(Value::Lit(Literal::Str(buf)))
                 }
@@ -607,8 +612,8 @@ impl State {
             // for a range, choose randomly between the start and end
             // expressions
             Expr::Range(from, to) => {
-                let from = self.eval(*from, env)?.as_num()?;
-                let to = self.eval(*to, env)?.as_num()?;
+                let from = self.eval(*from, env)?.as_num(&self.ast.borrow())?;
+                let to = self.eval(*to, env)?.as_num(&self.ast.borrow())?;
                 Ok(Value::Lit(Literal::Num(
                     self.rand.borrow_mut().gen_range_i64(from, to+1),
                 )))
