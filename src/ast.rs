@@ -78,15 +78,15 @@ impl ASTArena {
     }
 
     pub fn get_line(&self, file: FileRef, span: Span) -> String {
-        let mut line_number = 0;
+        let mut line_number = 1;
         let mut start_of_line = 0;
         let mut end_of_line = None;
         let src = &self.files[file.idx];
 
         for (i, ch) in src.char_indices() {
             if ch == '\n' {
-                line_number += 1;
                 if i < span.start as usize {
+                    line_number += 1;
                     start_of_line = i;
                 }
                 if i >= span.end as usize && end_of_line.is_none() {
