@@ -111,7 +111,7 @@ pub struct BuiltinFunc {
     pub name: &'static str,
     /// The callback here is the Rust implementation of the function,
     /// where the provided `ExprRef` is the argument to the function.
-    pub callback: &'static dyn Fn(&State, ExprRef, &Env) -> Result<Value, Error>,
+    pub callback: Box<dyn Fn(&State, ExprRef, &Env) -> Result<Value, Error>>,
 }
 
 impl fmt::Debug for BuiltinFunc {
