@@ -4,8 +4,6 @@ use crate::interp::*;
 use anyhow::{bail, Error};
 
 /// The list of builtins provided at startup.
-///
-/// TODO: move this to a separate file and clean it up
 pub fn builtins() -> Vec<BuiltinFunc> {
     vec![
         BuiltinFunc {
