@@ -29,15 +29,10 @@ impl Value {
         self.with_str(ast, |s| s.to_string())
     }
 }
-// impl fmt::Display for Value {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         self.with_str(|s| write!(f, "{}", s))
-//     }
-// }
 
 impl Value {
     /// Convert this value to a Rust integer, failing otherwise
-    fn as_num(&self, ast: &ASTArena) -> Result<i64, Error> {
+    pub fn as_num(&self, ast: &ASTArena) -> Result<i64, Error> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
             _ => self.with_str(ast, |s| bail!("Expected number, got {}", s)),
@@ -45,7 +40,7 @@ impl Value {
     }
 
     /// Convert this value to a Rust string, failing otherwise
-    fn as_str(&self, ast: &ASTArena) -> Result<&str, Error> {
+    pub fn as_str(&self, ast: &ASTArena) -> Result<&str, Error> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
             _ => self.with_str(ast, |s| bail!("Expected string, got {}", s)),
@@ -53,7 +48,7 @@ impl Value {
     }
 
     /// Convert this value to a Rust slice, failing otherwise
-    fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], Error> {
+    pub fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], Error> {
         match self {
             Value::Tup(vals) => Ok(vals),
             _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
@@ -61,7 +56,7 @@ impl Value {
     }
 
     /// Convert this value to a closure, failing otherwise
-    fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, Error> {
+    pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, Error> {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
@@ -73,7 +68,7 @@ impl Value {
     /// not completely forced already: indeed, this can't, since it
     /// doesn't have access to the `State`. Unevaluated fragments of
     /// the value will be printed as `#<unevaluated>`.
-    fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
+    pub fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
         match self {
             Value::Nil => f(""),
             Value::Lit(Literal::Str(s)) => f(s),
@@ -108,10 +103,10 @@ pub struct BuiltinFunc {
     /// The name of the builtin: this is used in error messages, in
     /// printing the value (e.g. in the case of `puts some-builtin`),
     /// and as the Matzo identifier used for this function.
-    name: &'static str,
+    pub name: &'static str,
     /// The callback here is the Rust implementation of the function,
     /// where the provided `ExprRef` is the argument to the function.
-    callback: &'static dyn Fn(&State, ExprRef, &Env) -> Result<Value, Error>,
+    pub callback: &'static dyn Fn(&State, ExprRef, &Env) -> Result<Value, Error>,
 }
 
 impl fmt::Debug for BuiltinFunc {
@@ -119,105 +114,6 @@ impl fmt::Debug for BuiltinFunc {
         writeln!(fmt, "BuiltinFunc {{ name: {:?}, ... }}", self.name)
     }
 }
-
-/// The list of builtins provided at startup.
-///
-/// TODO: move this to a separate file and clean it up
-const BUILTINS: &[BuiltinFunc] = &[
-    BuiltinFunc {
-        name: "rep",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let (rep, expr) = {
-                let ast = state.ast.borrow();
-                let args = match &ast[expr] {
-                    Expr::Tup(tup) => tup,
-                    _ => {
-                        let span = state.ast.borrow().get_line(expr.file, expr.span);
-                        bail!("`rep`: expected tuple\n{}", span)
-                    }
-                };
-                if args.len() != 2 {
-                    let span = state.ast.borrow().get_line(expr.file, expr.span);
-                    bail!("`rep`: expected two arguments, got {}\n{}", args.len(), span)
-                }
-                (args[0], args[1])
-            };
-            let mut buf = String::new();
-            let num = state.eval(rep, env)?.as_num(&state.ast.borrow())?;
-            for _ in 0..num {
-                buf.push_str(&state.eval(expr, env)?.as_str(&state.ast.borrow())?.to_string());
-            }
-            Ok(Value::Lit(Literal::Str(buf)))
-        },
-    },
-    BuiltinFunc {
-        name: "length",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let args = match state.eval(expr, env)? {
-                Value::Tup(tup) => tup,
-                _ => bail!("`length`: expected tuple"),
-            };
-            Ok(Value::Lit(Literal::Num(args.len() as i64)))
-        },
-    },
-    BuiltinFunc {
-        name: "to-upper",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(s.as_str(&state.ast.borrow())?.to_uppercase())))
-        },
-    },
-    BuiltinFunc {
-        name: "capitalize",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(titlecase::titlecase(s.as_str(&state.ast.borrow())?))))
-
-        },
-    },
-    BuiltinFunc {
-        name: "to-lower",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let s = state.eval(expr, env)?;
-            Ok(Value::Lit(Literal::Str(s.as_str(&state.ast.borrow())?.to_lowercase())))
-        },
-    },
-    BuiltinFunc {
-        name: "concat",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let val = state.eval(expr, env)?;
-            let tup = val.as_tup(&state.ast.borrow())?;
-            let mut contents = Vec::new();
-            for elem in tup {
-                for th in state.hnf(elem)?.as_tup(&state.ast.borrow())? {
-                    contents.push(th.clone());
-                }
-            }
-            Ok(Value::Tup(contents))
-        },
-    },
-    BuiltinFunc {
-        name: "tuple-fold",
-        callback: &|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-            let val = state.eval(expr, env)?;
-            let args = val.as_tup(&state.ast.borrow())?;
-            if let [func, init, tup] = args {
-                let func = state.hnf(func)?;
-                let tup = state.hnf(tup)?;
-
-                let mut result = init.clone();
-                for t in tup.as_tup(&state.ast.borrow())? {
-                    let partial = state.eval_closure(func.as_closure(&state.ast.borrow())?, result)?;
-                    result = Thunk::Value(state.eval_closure(partial.as_closure(&state.ast.borrow())?, t.clone())?);
-                }
-
-                state.hnf(&result)
-            } else {
-                bail!("`tuple-fold`: expected 3 arguments, got {}", args.len());
-            }
-        },
-    },
-];
 
 /// The name `Thunk` is a bit of a misnomer here: this is
 /// _potentially_ a `Thunk`, but represents anything that can be
@@ -235,7 +131,7 @@ pub enum Thunk {
 /// An environment is either `None` (i.e. in the root scope) or `Some`
 /// of some reference-counted scope (since those scopes might be
 /// shared in several places, e.g. as pointers in thunks or closures).
-type Env = Option<Rc<Scope>>;
+pub type Env = Option<Rc<Scope>>;
 
 /// A `Scope` represents a _non-root_ scope (since the root scope is
 /// treated in a special way) and contains a map from variables to
@@ -265,7 +161,7 @@ pub struct Closure {
 pub struct State {
     /// An `ASTArena` that contains all the packed information that
     /// results from parsing a program.
-    ast: RefCell<ASTArena>,
+    pub ast: RefCell<ASTArena>,
     /// The root scope of the program, which contains all the
     /// top-level definitions and builtins.
     root_scope: RefCell<HashMap<StrRef, Thunk>>,
@@ -294,7 +190,7 @@ impl State {
             expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
-        for builtin in BUILTINS {
+        for builtin in crate::builtins::BUILTINS {
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
@@ -313,7 +209,7 @@ impl State {
             expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
         };
-        for builtin in BUILTINS {
+        for builtin in crate::builtins::BUILTINS {
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
@@ -544,7 +440,7 @@ impl State {
     }
 
     /// Given a thunk, force it to WHNF.
-    fn hnf(&self, thunk: &Thunk) -> Result<Value, Error> {
+    pub fn hnf(&self, thunk: &Thunk) -> Result<Value, Error> {
         match thunk {
             Thunk::Expr(expr, env) => self.eval(*expr, env),
             Thunk::Value(val) => Ok(val.clone()),
@@ -554,7 +450,7 @@ impl State {
 
     /// Given an `ExprRef` and an environment, fetch that expression
     /// and then evalute it in that environment
-    fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
+    pub fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
         let expr = &self.ast.borrow()[expr_ref.item];
         match expr {
             // literals should be mostly cheap-ish to copy, so a
@@ -711,7 +607,7 @@ impl State {
     /// function to mutably replace it with progressively more
     /// evaluated versions of the same expression, and then that's the
     /// thing we put into scope in the body of the function.
-    fn eval_closure(&self, closure: &Closure, mut scrut: Thunk) -> Result<Value, Error> {
+    pub fn eval_closure(&self, closure: &Closure, mut scrut: Thunk) -> Result<Value, Error> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
