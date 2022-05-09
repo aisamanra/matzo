@@ -135,10 +135,10 @@ pub enum Token<'a> {
     #[token("fix")]
     Fix,
 
-    #[regex(r"\p{Ll}(\pL|[0-9_-])*")]
+    #[regex(r"\p{Ll}(\pL|[0-9_/-])*")]
     Var(&'a str),
 
-    #[regex(r"\p{Lu}(\pL|[0-9_-])*")]
+    #[regex(r"\p{Lu}(\pL|[0-9_/-])*")]
     Atom(&'a str),
 
     #[regex(r"[0-9]+", parse_num)]
