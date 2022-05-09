@@ -19,9 +19,14 @@ use std::rc::Rc;
 pub enum Value {
     Lit(Literal),
     Tup(Vec<Thunk>),
-    Builtin(&'static BuiltinFunc),
+    Builtin(BuiltinRef),
     Closure(Closure),
     Nil,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct BuiltinRef {
+    idx: usize,
 }
 
 impl Value {
@@ -84,13 +89,13 @@ impl Value {
                     match val {
                         Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
                         Thunk::Expr(..) => buf.push_str("#<unevaluated>"),
-                        Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.name)),
+                        Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.idx)),
                     }
                 }
                 buf.push('>');
                 f(&buf)
             }
-            Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
+            Value::Builtin(func) => f(&format!("#<builtin {}>", func.idx)),
             Value::Closure(_) => f("#<lambda ...>"),
         }
     }
@@ -125,7 +130,7 @@ impl fmt::Debug for BuiltinFunc {
 pub enum Thunk {
     Expr(ExprRef, Env),
     Value(Value),
-    Builtin(&'static BuiltinFunc),
+    Builtin(BuiltinRef),
 }
 
 /// An environment is either `None` (i.e. in the root scope) or `Some`
@@ -165,6 +170,8 @@ pub struct State {
     /// The root scope of the program, which contains all the
     /// top-level definitions and builtins.
     root_scope: RefCell<HashMap<StrRef, Thunk>>,
+    /// The set of builtin (i.e. implemented-in-Rust) functions
+    builtins: Vec<&'static BuiltinFunc>,
     /// The thread-local RNG.
     rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
@@ -183,18 +190,21 @@ impl State {
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
     pub fn new() -> State {
-        let s = State {
+        let mut s = State {
             root_scope: RefCell::new(HashMap::new()),
             rand: RefCell::new(Box::new(DefaultRNG::new())),
             parser: crate::grammar::StmtsParser::new(),
             expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
+            builtins: Vec::new(),
         };
         for builtin in crate::builtins::BUILTINS {
+            let idx = s.builtins.len();
+            s.builtins.push(builtin);
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
-                .insert(sym, Thunk::Builtin(builtin));
+                .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
         }
         s
     }
@@ -202,18 +212,21 @@ impl State {
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
     pub fn new_from_seed(seed: u64) -> State {
-        let s = State {
+        let mut s = State {
             root_scope: RefCell::new(HashMap::new()),
             rand: RefCell::new(Box::new(SeededRNG::from_seed(seed))),
             parser: crate::grammar::StmtsParser::new(),
             expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
+            builtins: Vec::new(),
         };
         for builtin in crate::builtins::BUILTINS {
+            let idx = s.builtins.len();
+            s.builtins.push(builtin);
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
-                .insert(sym, Thunk::Builtin(builtin));
+                .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
         }
         s
     }
@@ -444,7 +457,7 @@ impl State {
         match thunk {
             Thunk::Expr(expr, env) => self.eval(*expr, env),
             Thunk::Value(val) => Ok(val.clone()),
-            Thunk::Builtin(b) => Ok(Value::Builtin(b)),
+            Thunk::Builtin(b) => Ok(Value::Builtin(*b)),
         }
     }
 
@@ -531,7 +544,10 @@ impl State {
                     let scrut = Thunk::Expr(*val, env.clone());
                     self.eval_closure(&c, scrut)
                 }
-                Value::Builtin(builtin) => (builtin.callback)(self, *val, env),
+                Value::Builtin(b) => {
+                    let builtin = self.builtins[b.idx];
+                    (builtin.callback)(self, *val, env)
+                }
                 _ => bail!("Bad function: {:?}", func),
             },
 
