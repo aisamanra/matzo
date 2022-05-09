@@ -171,7 +171,7 @@ pub struct State {
     /// top-level definitions and builtins.
     root_scope: RefCell<HashMap<StrRef, Thunk>>,
     /// The set of builtin (i.e. implemented-in-Rust) functions
-    builtins: Vec<&'static BuiltinFunc>,
+    builtins: Vec<BuiltinFunc>,
     /// The thread-local RNG.
     rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
@@ -198,13 +198,13 @@ impl State {
             ast: RefCell::new(ASTArena::new()),
             builtins: Vec::new(),
         };
-        for builtin in crate::builtins::BUILTINS {
+        for builtin in crate::builtins::builtins() {
             let idx = s.builtins.len();
-            s.builtins.push(builtin);
-            let sym = s.ast.borrow_mut().add_string(builtin.name);
+            let sym = s.ast.borrow_mut().add_string(&builtin.name);
             s.root_scope
                 .borrow_mut()
                 .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
+            s.builtins.push(builtin);
         }
         s
     }
@@ -220,13 +220,13 @@ impl State {
             ast: RefCell::new(ASTArena::new()),
             builtins: Vec::new(),
         };
-        for builtin in crate::builtins::BUILTINS {
+        for builtin in crate::builtins::builtins() {
             let idx = s.builtins.len();
-            s.builtins.push(builtin);
-            let sym = s.ast.borrow_mut().add_string(builtin.name);
+            let sym = s.ast.borrow_mut().add_string(&builtin.name);
             s.root_scope
                 .borrow_mut()
                 .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
+            s.builtins.push(builtin);
         }
         s
     }
@@ -309,7 +309,7 @@ impl State {
                 for stmt in stmts {
                     self.execute(&stmt, io::stdout())?;
                 }
-            },
+            }
             Err(err) => {
                 let lexed = crate::lexer::tokens(src);
                 let expr = {
@@ -398,10 +398,9 @@ impl State {
                 if *fixed {
                     let choice = &strs[self.rand.borrow_mut().gen_range_usize(0, strs.len())];
                     let str = self.ast.borrow()[choice.item].to_string();
-                    self.root_scope.borrow_mut().insert(
-                        name.item,
-                        Thunk::Value(Value::Lit(Literal::Str(str))),
-                    );
+                    self.root_scope
+                        .borrow_mut()
+                        .insert(name.item, Thunk::Value(Value::Lit(Literal::Str(str))));
                     return Ok(());
                 }
 
@@ -524,7 +523,7 @@ impl State {
                 let from = self.eval(*from, env)?.as_num(&self.ast.borrow())?;
                 let to = self.eval(*to, env)?.as_num(&self.ast.borrow())?;
                 Ok(Value::Lit(Literal::Num(
-                    self.rand.borrow_mut().gen_range_i64(from, to+1),
+                    self.rand.borrow_mut().gen_range_i64(from, to + 1),
                 )))
             }
 
@@ -545,7 +544,7 @@ impl State {
                     self.eval_closure(&c, scrut)
                 }
                 Value::Builtin(b) => {
-                    let builtin = self.builtins[b.idx];
+                    let builtin = &self.builtins[b.idx];
                     (builtin.callback)(self, *val, env)
                 }
                 _ => bail!("Bad function: {:?}", func),

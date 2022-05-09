@@ -1,6 +1,6 @@
 use matzo::interp::State;
 
-use clap::{Arg, App};
+use clap::{App, Arg};
 
 #[derive(Debug)]
 struct Opts {
@@ -15,17 +15,21 @@ impl Opts {
             .version(format!("git {}", env!("VERGEN_GIT_SHA")).as_ref())
             .author("Getty Ritter <matzo@infinitenegativeutility.com>")
             .about("A language for random text")
-            .arg(Arg::with_name("seed")
-                 .short("s")
-                 .long("seed")
-                 .value_name("NUMBER")
-                 .help("Sets a custom RNG seed")
-                 .takes_value(true))
-            .arg(Arg::with_name("input")
-                 .value_name("FILES")
-                 .help("Files to evaluate")
-                 .multiple(true)
-                 .takes_value(true))
+            .arg(
+                Arg::with_name("seed")
+                    .short("s")
+                    .long("seed")
+                    .value_name("NUMBER")
+                    .help("Sets a custom RNG seed")
+                    .takes_value(true),
+            )
+            .arg(
+                Arg::with_name("input")
+                    .value_name("FILES")
+                    .help("Files to evaluate")
+                    .multiple(true)
+                    .takes_value(true),
+            )
             .get_matches();
 
         let seed = matches.value_of("seed").map(|s| s.parse().unwrap());

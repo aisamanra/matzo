@@ -38,7 +38,7 @@ impl<T> Located<T> {
     }
 }
 
-impl <T: Clone> Located<T> {
+impl<T: Clone> Located<T> {
     pub fn map<R>(&self, func: impl FnOnce(T) -> R) -> Located<R> {
         Located {
             item: func(self.item.clone()),

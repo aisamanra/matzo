@@ -1,5 +1,5 @@
-use std::fmt;
 pub use crate::lexer::{FileRef, Located, Span};
+use std::fmt;
 
 pub type StrRef = string_interner::DefaultSymbol;
 pub type Name = Located<StrRef>;
@@ -97,7 +97,7 @@ impl ASTArena {
         let end_of_line = end_of_line.unwrap_or_else(|| src.len());
 
         let mut result = format!("{:3} |", line_number);
-        result.push_str(&src[start_of_line .. end_of_line]);
+        result.push_str(&src[start_of_line..end_of_line]);
         result.push_str("\n     ");
         for _ in start_of_line..(span.start as usize) {
             result.push(' ');

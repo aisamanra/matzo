@@ -1,6 +1,6 @@
 use matzo::grammar;
-use matzo::lexer;
 use matzo::interp;
+use matzo::lexer;
 
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -18,7 +18,10 @@ fn generate_runs(source: &str) -> Result<BTreeMap<String, String>, Box<dyn std::
             let _ = found_results.insert(out, seed);
         }
     }
-    let output = found_results.into_iter().map(|(k, v)| (format!("{}", v), k)).collect();
+    let output = found_results
+        .into_iter()
+        .map(|(k, v)| (format!("{}", v), k))
+        .collect();
     Ok(output)
 }
 

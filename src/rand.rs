@@ -1,4 +1,4 @@
-use rand::{SeedableRng, Rng};
+use rand::{Rng, SeedableRng};
 
 pub trait MatzoRand {
     fn gen_range_i64(&mut self, min: i64, max: i64) -> i64;
@@ -12,7 +12,7 @@ pub struct DefaultRNG {
 impl DefaultRNG {
     pub fn new() -> DefaultRNG {
         DefaultRNG {
-            rand: rand::thread_rng()
+            rand: rand::thread_rng(),
         }
     }
 }
@@ -40,7 +40,7 @@ pub struct SeededRNG {
 impl SeededRNG {
     pub fn from_seed(seed: u64) -> SeededRNG {
         SeededRNG {
-            rand: rand::rngs::StdRng::seed_from_u64(seed)
+            rand: rand::rngs::StdRng::seed_from_u64(seed),
         }
     }
 }
