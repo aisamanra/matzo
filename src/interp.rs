@@ -571,13 +571,13 @@ impl State {
                 self.eval(*body, &Some(new_scope))
             }
 
-            // Expr::Case(scrut, _) => {
-            //     let closure = Closure {
-            //         func: expr_ref,
-            //         scope: env.clone(),
-            //     };
-            //     self.eval_closure(&closure, Thunk::Expr(*scrut, env.clone()))
-            // }
+            Expr::Case(scrut, _) => {
+                let closure = Closure {
+                    func: expr_ref,
+                    scope: env.clone(),
+                };
+                self.eval_closure(&closure, vec![Thunk::Expr(*scrut, env.clone())])
+            }
         }
     }
 
@@ -628,7 +628,7 @@ impl State {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
-            // Expr::Case(_, cases) => cases,
+            Expr::Case(_, cases) => cases,
             // see the note attached to the definition of `Closure`
             _ => bail!("INVARIANT FAILED"),
         };

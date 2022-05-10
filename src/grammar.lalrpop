@@ -131,21 +131,33 @@ pub Leaf: ExprId = {
     },
     "let" <fixed:"fix"?> <name:Name> ":=" <e1:Located<Expr>> "in" "{" <e2:Located<Expr>> "}" =>
         ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
-    "{" <cs:Cases> "}" =>
+    "{" <cs:FunCases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
-//    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
-//        ast.add_expr(Expr::Case(e, cs)),
+    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
+        ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
 };
 
 pub Cases: Vec<Case> = {
-    <mut cs:(<Case> ";")*> <c:Case> => {
+  <mut cs:(<Case> ";")*> <c:Case> => {
+    cs.push(c);
+    cs
+  }
+};
+
+pub Case: Case = {
+  <pat:Pat> "=>" <expr:Located<Expr>> =>
+    Case { pats: vec![pat], expr }
+};
+
+pub FunCases: Vec<Case> = {
+    <mut cs:(<FunCase> ";")*> <c:FunCase> => {
         cs.push(c);
         cs
     }
 };
 
-pub Case: Case = {
+pub FunCase: Case = {
     "[" <mut pats:(<Pat> ",")*> <pat:Pat> "]" "=>" <expr:Located<Expr>> => {
         pats.push(pat);
         Case { pats, expr }
