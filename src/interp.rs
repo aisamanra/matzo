@@ -77,7 +77,7 @@ impl Value {
         match self {
             Value::Nil => f(""),
             Value::Lit(Literal::Str(s)) => f(s),
-            Value::Lit(Literal::Atom(s)) => f(&format!("{}", &ast[s.item])),
+            Value::Lit(Literal::Atom(s)) => f(&ast[s.item].to_string()),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
             Value::Tup(values) => {
                 let mut buf = String::new();

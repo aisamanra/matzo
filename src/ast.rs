@@ -94,7 +94,7 @@ impl ASTArena {
                 }
             }
         }
-        let end_of_line = end_of_line.unwrap_or_else(|| src.len());
+        let end_of_line = end_of_line.unwrap_or(src.len());
 
         let mut result = format!("{:3} |", line_number);
         result.push_str(&src[start_of_line..end_of_line]);
