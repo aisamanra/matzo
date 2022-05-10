@@ -40,34 +40,34 @@ impl Value {
 
 impl Value {
     /// Convert this value to a Rust integer, failing otherwise
-    pub fn as_num(&self, ast: &ASTArena) -> Result<i64, Error> {
+    pub fn as_num(&self, ast: &ASTArena) -> Result<i64, MatzoError> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
-            _ => self.with_str(ast, |s| bail!("Expected number, got {}", s)),
+            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected number, got {}", s)))),
         }
     }
 
     /// Convert this value to a Rust string, failing otherwise
-    pub fn as_str(&self, ast: &ASTArena) -> Result<&str, Error> {
+    pub fn as_str(&self, ast: &ASTArena) -> Result<&str, MatzoError> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
-            _ => self.with_str(ast, |s| bail!("Expected string, got {}", s)),
+            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected string, got {}", s)))),
         }
     }
 
     /// Convert this value to a Rust slice, failing otherwise
-    pub fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], Error> {
+    pub fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], MatzoError> {
         match self {
             Value::Tup(vals) => Ok(vals),
-            _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
+            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected tuple, got {}", s)))),
         }
     }
 
     /// Convert this value to a closure, failing otherwise
-    pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, Error> {
+    pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, MatzoError> {
         match self {
             Value::Closure(closure) => Ok(closure),
-            _ => self.with_str(ast, |s| bail!("Expected closure, got {}", s)),
+            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected closure, got {}", s)))),
         }
     }
 
@@ -104,7 +104,7 @@ impl Value {
     }
 }
 
-type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, Error>>;
+type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>>;
 
 /// A representation of a builtin function implemented in Rust. This
 /// will be inserted into the global scope under the name provided as
@@ -240,7 +240,7 @@ impl State {
     /// Look up a `Name` in the provided `Env`. This will result in
     /// either a `Thunk` (i.e. the named value) or an error that
     /// indicates the missing name.
-    fn lookup(&self, env: &Env, name: Name) -> Result<Thunk, Error> {
+    fn lookup(&self, env: &Env, name: Name) -> Result<Thunk, MatzoError> {
         if let Some(env) = env {
             if let Some(ne) = env.vars.get(&name.item) {
                 Ok(ne.clone())
@@ -250,8 +250,7 @@ impl State {
         } else {
             match self.root_scope.borrow().get(&name.item) {
                 None => {
-                    let span = self.ast.borrow().get_line(name.file, name.span);
-                    bail!("no such thing: {}\n{}", &self.ast.borrow()[name.item], span)
+                    Err(MatzoError::new(name.span, format!("Undefined name {}", &self.ast.borrow()[name.item])))
                 }
                 Some(ne) => Ok(ne.clone()),
             }
@@ -286,8 +285,7 @@ impl State {
             .map_err(MatzoError::from_parse_error)?;
         let mut stdout = io::stdout();
         for stmt in stmts {
-            self.execute(&stmt, &mut stdout)
-                .map_err(|err| MatzoError::new(Span::empty(), format!("{:?}", err)))?;
+            self.execute(&stmt, &mut stdout)?;
         }
         Ok(())
     }
@@ -365,7 +363,7 @@ impl State {
     /// Execute this statement, writing any output to the provided
     /// output writer. Right now, this will always start in root
     /// scope: there are no statements within functions.
-    pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), Error> {
+    pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), MatzoError> {
         match stmt {
             // Evaluate the provided expression _all the way_
             // (i.e. recurisvely, not to WHNF) and write its
@@ -452,7 +450,7 @@ impl State {
     }
 
     /// Given a value, force it recursively.
-    fn force(&self, val: Value) -> Result<Value, Error> {
+    fn force(&self, val: Value) -> Result<Value, MatzoError> {
         match val {
             Value::Tup(values) => Ok(Value::Tup(
                 values
@@ -462,14 +460,14 @@ impl State {
                         let v = self.force(v)?;
                         Ok(Thunk::Value(v))
                     })
-                    .collect::<Result<Vec<Thunk>, Error>>()?,
+                    .collect::<Result<Vec<Thunk>, MatzoError>>()?,
             )),
             _ => Ok(val),
         }
     }
 
     /// Given a thunk, force it to WHNF.
-    pub fn hnf(&self, thunk: &Thunk) -> Result<Value, Error> {
+    pub fn hnf(&self, thunk: &Thunk) -> Result<Value, MatzoError> {
         match thunk {
             Thunk::Expr(expr, env) => self.eval(*expr, env),
             Thunk::Value(val) => Ok(val.clone()),
@@ -479,7 +477,7 @@ impl State {
 
     /// Given an `ExprRef` and an environment, fetch that expression
     /// and then evalute it in that environment
-    pub fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, Error> {
+    pub fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, MatzoError> {
         let expr = &self.ast.borrow()[expr_ref.item];
         match expr {
             // literals should be mostly cheap-ish to copy, so a
@@ -564,7 +562,10 @@ impl State {
                     let builtin = &self.builtins[b.idx];
                     (builtin.callback)(self, vals, env)
                 }
-                _ => bail!("Bad function: {:?}", func),
+                _ => Err(MatzoError::new(
+                    expr_ref.span,
+                    "Trying to call a non-function".to_string(),
+                )),
             },
 
             // for a let-expression, create a new scope, add the new
@@ -639,13 +640,13 @@ impl State {
     /// function to mutably replace it with progressively more
     /// evaluated versions of the same expression, and then that's the
     /// thing we put into scope in the body of the function.
-    pub fn eval_closure(&self, closure: &Closure, mut scruts: Vec<Thunk>) -> Result<Value, Error> {
+    pub fn eval_closure(&self, closure: &Closure, mut scruts: Vec<Thunk>) -> Result<Value, MatzoError> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
             Expr::Case(_, cases) => cases,
             // see the note attached to the definition of `Closure`
-            _ => bail!("INVARIANT FAILED"),
+            other => panic!("Expected a `Fun` or `Case` in a closure, found {:?}", other)
         };
 
         // for each case
@@ -680,7 +681,7 @@ impl State {
         }
 
         // we couldn't find a matching pattern, so throw an error
-        bail!("No pattern in {:?} matched {:?}", cases, scruts);
+        Err(MatzoError::new(Span::empty(), format!("No pattern matched {:?}", scruts)))
     }
 
     /// attempt to match the thunk `scrut` against the pattern
@@ -698,7 +699,7 @@ impl State {
         pat: &Pat,
         scrut: &mut Thunk,
         bindings: &mut Vec<(Name, Thunk)>,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, MatzoError> {
         if let Pat::Var(v) = pat {
             bindings.push((*v, scrut.clone()));
             return Ok(true);
@@ -748,9 +749,9 @@ impl State {
         }
     }
 
-    // this chooses an expressino from a choice, taking into account
+    // this chooses an expression from a choice, taking into account
     // the weights
-    fn choose(&self, choices: &[Choice], env: &Env) -> Result<Value, Error> {
+    fn choose(&self, choices: &[Choice], env: &Env) -> Result<Value, MatzoError> {
         let max = choices.iter().map(Choice::weight).sum();
         let mut choice = self.rand.borrow_mut().gen_range_i64(0, max);
         for ch in choices {
@@ -761,6 +762,6 @@ impl State {
         }
 
         // if we got here, it means our math was wrong
-        bail!("unreachable")
+        panic!("unreachable (bad math in `choose`)")
     }
 }

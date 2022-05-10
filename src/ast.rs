@@ -82,6 +82,10 @@ impl ASTArena {
     }
 
     pub fn get_line(&self, file: FileRef, span: Span) -> String {
+        if !span.exists() {
+            return String::new();
+        }
+
         let mut line_number = 1;
         let mut start_of_line = 0;
         let mut end_of_line = None;
