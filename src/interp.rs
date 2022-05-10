@@ -101,6 +101,8 @@ impl Value {
     }
 }
 
+type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, Error>>;
+
 /// A representation of a builtin function implemented in Rust. This
 /// will be inserted into the global scope under the name provided as
 /// `name`.
@@ -111,7 +113,7 @@ pub struct BuiltinFunc {
     pub name: &'static str,
     /// The callback here is the Rust implementation of the function,
     /// where the provided `ExprRef` is the argument to the function.
-    pub callback: Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, Error>>,
+    pub callback: Callback,
 }
 
 impl fmt::Debug for BuiltinFunc {
@@ -200,7 +202,7 @@ impl State {
         };
         for builtin in crate::builtins::builtins() {
             let idx = s.builtins.len();
-            let sym = s.ast.borrow_mut().add_string(&builtin.name);
+            let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
                 .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
@@ -222,7 +224,7 @@ impl State {
         };
         for builtin in crate::builtins::builtins() {
             let idx = s.builtins.len();
-            let sym = s.ast.borrow_mut().add_string(&builtin.name);
+            let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope
                 .borrow_mut()
                 .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
@@ -640,7 +642,7 @@ impl State {
                 continue;
             }
             for (scrut, pat) in scruts.iter_mut().zip(c.pats.iter()) {
-                if !self.match_pat(&pat, scrut, &mut bindings)? {
+                if !self.match_pat(pat, scrut, &mut bindings)? {
                     // if we didn't match, we don't care about any
                     // bindings we've found: simply skip it
                     continue 'cases;

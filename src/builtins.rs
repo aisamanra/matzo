@@ -15,10 +15,9 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let num = state.eval(*rep, env)?.as_num(&state.ast.borrow())?;
                         for _ in 0..num {
                             buf.push_str(
-                                &state
+                                state
                                     .eval(*expr, env)?
-                                    .as_str(&state.ast.borrow())?
-                                    .to_string(),
+                                    .as_str(&state.ast.borrow())?,
                             );
                         }
                         Ok(Value::Lit(Literal::Str(buf)))
