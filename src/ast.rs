@@ -148,12 +148,14 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Ap(func, arg) => {
+            Expr::Ap(func, args) => {
                 writeln!(f, "Ap(")?;
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*func], f, depth + 2)?;
-                self.indent(f, depth + 2)?;
-                self.show_expr(&self[*arg], f, depth + 2)?;
+                for arg in args {
+                    self.indent(f, depth + 2)?;
+                    self.show_expr(&self[*arg], f, depth + 2)?;
+                }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
@@ -214,7 +216,10 @@ impl ASTArena {
                 writeln!(f, "Fun(")?;
                 for case in cases {
                     self.indent(f, depth + 2)?;
-                    self.show_pat(&case.pat, f)?;
+                    for pat in case.pats.iter() {
+                        self.show_pat(pat, f)?;
+                        writeln!(f, ", ")?;
+                    }
                     writeln!(f, " =>")?;
                     self.indent(f, depth + 4)?;
                     self.show_expr(&self[case.expr], f, depth + 4)?;
@@ -223,20 +228,20 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Case(expr, cases) => {
-                writeln!(f, "Case(")?;
-                self.indent(f, depth)?;
-                self.show_expr(&self[*expr], f, depth)?;
-                for case in cases {
-                    self.indent(f, depth + 2)?;
-                    self.show_pat(&case.pat, f)?;
-                    writeln!(f, " =>")?;
-                    self.indent(f, depth + 4)?;
-                    self.show_expr(&self[case.expr], f, depth + 4)?;
-                }
-                self.indent(f, depth)?;
-                writeln!(f, ")")
-            }
+            // Expr::Case(expr, cases) => {
+            //     writeln!(f, "Case(")?;
+            //     self.indent(f, depth)?;
+            //     self.show_expr(&self[*expr], f, depth)?;
+            //     for case in cases {
+            //         self.indent(f, depth + 2)?;
+            //         self.show_pat(&case.pat, f)?;
+            //         writeln!(f, " =>")?;
+            //         self.indent(f, depth + 4)?;
+            //         self.show_expr(&self[case.expr], f, depth + 4)?;
+            //     }
+            //     self.indent(f, depth)?;
+            //     writeln!(f, ")")
+            // }
         }
     }
 }
@@ -315,12 +320,12 @@ pub enum Expr {
     Cat(Vec<ExprRef>),
     Chc(Vec<Choice>),
     Lit(Literal),
-    Ap(ExprRef, ExprRef),
+    Ap(ExprRef, Vec<ExprRef>),
     Tup(Vec<ExprRef>),
     Let(bool, Name, ExprRef, ExprRef),
     Fun(Vec<Case>),
     Range(ExprRef, ExprRef),
-    Case(ExprRef, Vec<Case>),
+    // Case(ExprRef, Vec<Case>),
     Nil,
 }
 
@@ -340,7 +345,7 @@ impl ExprId {
 /// A single case in an anonymous function or `case` statement
 #[derive(Debug, Clone)]
 pub struct Case {
-    pub pat: Pat,
+    pub pats: Vec<Pat>,
     pub expr: ExprRef,
 }
 

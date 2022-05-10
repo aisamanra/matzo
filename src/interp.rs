@@ -538,14 +538,16 @@ impl State {
             // either a closure (i.e. the result of evaluating a
             // function) or a builtin, and then handle it
             // appropriately
-            Expr::Ap(func, val) => match self.eval(*func, env)? {
+            Expr::Ap(func, vals) => match self.eval(*func, env)? {
                 Value::Closure(c) => {
-                    let scrut = Thunk::Expr(*val, env.clone());
-                    self.eval_closure(&c, scrut)
+                    let scruts = vals.iter().map(|v| {
+                        Thunk::Expr(*v, env.clone())
+                    }).collect();
+                    self.eval_closure(&c, scruts)
                 }
                 Value::Builtin(b) => {
                     let builtin = &self.builtins[b.idx];
-                    (builtin.callback)(self, *val, env)
+                    (builtin.callback)(self, vals[0], env)
                 }
                 _ => bail!("Bad function: {:?}", func),
             },
@@ -569,13 +571,13 @@ impl State {
                 self.eval(*body, &Some(new_scope))
             }
 
-            Expr::Case(scrut, _) => {
-                let closure = Closure {
-                    func: expr_ref,
-                    scope: env.clone(),
-                };
-                self.eval_closure(&closure, Thunk::Expr(*scrut, env.clone()))
-            }
+            // Expr::Case(scrut, _) => {
+            //     let closure = Closure {
+            //         func: expr_ref,
+            //         scope: env.clone(),
+            //     };
+            //     self.eval_closure(&closure, Thunk::Expr(*scrut, env.clone()))
+            // }
         }
     }
 
@@ -596,7 +598,7 @@ impl State {
     /// careful is here:
     ///
     /// ```ignore
-    /// {Foo => "1"; Foo => "2"; _ => "..."}.(Foo | Bar)
+    /// {[Foo] => "1"; [Foo] => "2"; _ => "..."}[Foo | Bar]
     /// ```
     ///
     /// It should be impossible to get `"2"` in this case. That means
@@ -605,7 +607,7 @@ impl State {
     /// contain non-determinism:
     ///
     /// ```ignore
-    /// {<Foo, x> => x x "!"; <Bar, x> => x x "?"}.<Foo | Bar, "a" | "b">
+    /// {[<Foo, x>] => x x "!"; [<Bar, x>] => x x "?"}[<Foo | Bar, "a" | "b">]
     /// ```
     ///
     /// The above program should print one of "aa!", "bb!", "aa?", or
@@ -622,24 +624,29 @@ impl State {
     /// function to mutably replace it with progressively more
     /// evaluated versions of the same expression, and then that's the
     /// thing we put into scope in the body of the function.
-    pub fn eval_closure(&self, closure: &Closure, mut scrut: Thunk) -> Result<Value, Error> {
+    pub fn eval_closure(&self, closure: &Closure, mut scruts: Vec<Thunk>) -> Result<Value, Error> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
-            Expr::Case(_, cases) => cases,
+            // Expr::Case(_, cases) => cases,
             // see the note attached to the definition of `Closure`
             _ => bail!("INVARIANT FAILED"),
         };
 
         // for each case
-        for c in cases {
+        'cases: for c in cases {
             // build a set of potential bindings, which `match_pat`
             // will update if it finds matching variables
             let mut bindings = Vec::new();
-            if !self.match_pat(&c.pat, &mut scrut, &mut bindings)? {
-                // if we didn't match, we don't care about any
-                // bindings we've found: simply skip it
+            if scruts.len() != c.pats.len() {
                 continue;
+            }
+            for (scrut, pat) in scruts.iter_mut().zip(c.pats.iter()) {
+                if !self.match_pat(&pat, scrut, &mut bindings)? {
+                    // if we didn't match, we don't care about any
+                    // bindings we've found: simply skip it
+                    continue 'cases;
+                }
             }
 
             // build a new scope from the bindings discovered
@@ -658,7 +665,7 @@ impl State {
         }
 
         // we couldn't find a matching pattern, so throw an error
-        bail!("No pattern in {:?} matched {:?}", cases, scrut);
+        bail!("No pattern in {:?} matched {:?}", cases, scruts);
     }
 
     /// attempt to match the thunk `scrut` against the pattern

@@ -14,6 +14,8 @@ extern {
         ")" => Token::RPar,
         "{" => Token::LCurl,
         "}" => Token::RCurl,
+        "[" => Token::LBrac,
+        "]" => Token::RBrac,
         "|" => Token::Pipe,
         ":" => Token::Colon,
         "," => Token::Comma,
@@ -103,7 +105,11 @@ pub Term: ExprId = {
 };
 
 pub Branch: ExprId = {
-    <l:Located<Branch>> "." <r:Located<Subbranch>> => ast.add_expr(Expr::Ap(l, r)),
+//    <l:Located<Branch>> "." <r:Located<Subbranch>> => ast.add_expr(Expr::Ap(l, r)),
+    <l:Located<Branch>> "[" <mut rs:Located<(<Expr> ",")>*> <r:Located<Expr>> "]" => {
+        rs.push(r);
+        ast.add_expr(Expr::Ap(l, rs))
+    },
     <Subbranch> => <>,
 };
 
@@ -127,8 +133,8 @@ pub Leaf: ExprId = {
         ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
     "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
-    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
-        ast.add_expr(Expr::Case(e, cs)),
+//    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
+//        ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
 };
 
@@ -140,7 +146,10 @@ pub Cases: Vec<Case> = {
 };
 
 pub Case: Case = {
-    <pat:Pat> "=>" <expr:Located<Expr>> => Case { pat, expr },
+    "[" <mut pats:(<Pat> ",")*> <pat:Pat> "]" "=>" <expr:Located<Expr>> => {
+        pats.push(pat);
+        Case { pats, expr }
+    }
 };
 
 pub Pat: Pat = {

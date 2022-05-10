@@ -90,6 +90,11 @@ pub enum Token<'a> {
     #[token("}")]
     RCurl,
 
+    #[token("[")]
+    LBrac,
+    #[token("]")]
+    RBrac,
+
     #[token("|")]
     Pipe,
 

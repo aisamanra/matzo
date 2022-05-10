@@ -167,12 +167,10 @@ pub fn builtins() -> Vec<BuiltinFunc> {
 
                     let mut result = init.clone();
                     for t in tup.as_tup(&state.ast.borrow())? {
-                        let partial =
-                            state.eval_closure(func.as_closure(&state.ast.borrow())?, result)?;
-                        result =
-                            Thunk::Value(state.eval_closure(
-                                partial.as_closure(&state.ast.borrow())?,
-                                t.clone(),
+                        result = Thunk::Value(
+                            state.eval_closure(
+                                func.as_closure(&state.ast.borrow())?,
+                                vec![result, t.clone()],
                             )?);
                     }
 
