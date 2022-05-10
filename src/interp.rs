@@ -540,9 +540,7 @@ impl State {
             // appropriately
             Expr::Ap(func, vals) => match self.eval(*func, env)? {
                 Value::Closure(c) => {
-                    let scruts = vals.iter().map(|v| {
-                        Thunk::Expr(*v, env.clone())
-                    }).collect();
+                    let scruts = vals.iter().map(|v| Thunk::Expr(*v, env.clone())).collect();
                     self.eval_closure(&c, scruts)
                 }
                 Value::Builtin(b) => {
