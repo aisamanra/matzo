@@ -86,33 +86,31 @@ Matzo offers a handful of other data types in addition to strings. Matzo is dyna
 
 ### Functions
 
-Applying functions is done using an explicit operator: the `.` operator. That is to say, to apply the `to-upper` function to the string `"foo"`, you'd write `to-upper."foo"`.
-
-Functions can only be applied to one value at a time. This means that functions can sometimes take tuples of arguments (e.g. `rep.<3, "na">`) but functions can also be curried. Most stdlib functions take the tuple approach.
+Applying functions is done using parameter lists contained in square brackets. That is to say, to apply the `to-upper` function to the string `"foo"`, you'd write `to-upper["foo"]`.
 
 All functions are defined as anonymous functions and can optionally feature definition-by-cases. A simple function which just returns its argument looks like this:
 
 ```
-id := { x => x };
+id := { [x] => x };
 ```
 
 In order to define a function by cases, you can separate individual cases with `;`.
 
 ```
-if := { <True,  x, _> => x
-      ; <False, _, y> => y
+if := { [True,  x, _] => x
+      ; [False, _, y] => y
       };
 ```
 
-You can also return other functions, which retain access to their environment, which means the above function be expressed isomorphically as:
+Functions can also be manually uncurried:
 
 ```
-if := { True  => { x => { _ => x }}
-      ; False => { _ => { y => y }}
+if := { [True]  => { [x] => { [_] => x }}
+      ; [False] => { [_] => { [y] => y }}
       };
 ```
 
-While these two express the same functionality, the former would be called with `if.<condition, thenCase, elseCase>` while the latter would be called with `if.condition.then-case.else-case`.
+While these two express the same functionality, the former would be called with `if[condition, thenCase, elseCase]` while the latter would be called with `if[condition][then-case][else-case]`.
 
 ### A sample program
 
@@ -123,7 +121,7 @@ consonant ::= p t k w h n;
 vowel ::= a e i o u;
 nucleus := 4: vowel | vowel "'";
 syll := 4: consonant nucleus | nucleus;
-puts syll rep.<1..5, syll>;
+puts syll rep[1..5, syll];
 ```
 
 ## Implementation notes

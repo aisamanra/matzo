@@ -1,4 +1,4 @@
-word := syll (rep.<1..4, syll>);
+word := syll rep[1..4, syll];
 
 syll := 2: cons vowel | cons vowel;
 

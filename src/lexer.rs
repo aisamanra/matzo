@@ -38,7 +38,7 @@ impl<T> Located<T> {
     }
 }
 
-impl <T: Clone> Located<T> {
+impl<T: Clone> Located<T> {
     pub fn map<R>(&self, func: impl FnOnce(T) -> R) -> Located<R> {
         Located {
             item: func(self.item.clone()),
@@ -90,6 +90,11 @@ pub enum Token<'a> {
     #[token("}")]
     RCurl,
 
+    #[token("[")]
+    LBrac,
+    #[token("]")]
+    RBrac,
+
     #[token("|")]
     Pipe,
 
@@ -135,10 +140,10 @@ pub enum Token<'a> {
     #[token("fix")]
     Fix,
 
-    #[regex(r"\p{Ll}(\pL|[0-9_-])*")]
+    #[regex(r"\p{Ll}(\pL|[0-9_/-])*")]
     Var(&'a str),
 
-    #[regex(r"\p{Lu}(\pL|[0-9_-])*")]
+    #[regex(r"\p{Lu}(\pL|[0-9_/-])*")]
     Atom(&'a str),
 
     #[regex(r"[0-9]+", parse_num)]

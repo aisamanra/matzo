@@ -58,14 +58,17 @@ Puts Ap(
 )
 
 Puts Fun(
-  x =>
+  x, 
+ =>
     Var(x)
 )
 
 Puts Fun(
-  True =>
+  True, 
+ =>
     Str("yes")
-  False =>
+  False, 
+ =>
     Str("no")
 )
 

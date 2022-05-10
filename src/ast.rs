@@ -1,5 +1,5 @@
-use std::fmt;
 pub use crate::lexer::{FileRef, Located, Span};
+use std::fmt;
 
 pub type StrRef = string_interner::DefaultSymbol;
 pub type Name = Located<StrRef>;
@@ -97,7 +97,7 @@ impl ASTArena {
         let end_of_line = end_of_line.unwrap_or_else(|| src.len());
 
         let mut result = format!("{:3} |", line_number);
-        result.push_str(&src[start_of_line .. end_of_line]);
+        result.push_str(&src[start_of_line..end_of_line]);
         result.push_str("\n     ");
         for _ in start_of_line..(span.start as usize) {
             result.push(' ');
@@ -148,12 +148,14 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Ap(func, arg) => {
+            Expr::Ap(func, args) => {
                 writeln!(f, "Ap(")?;
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*func], f, depth + 2)?;
-                self.indent(f, depth + 2)?;
-                self.show_expr(&self[*arg], f, depth + 2)?;
+                for arg in args {
+                    self.indent(f, depth + 2)?;
+                    self.show_expr(&self[*arg], f, depth + 2)?;
+                }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
             }
@@ -214,7 +216,10 @@ impl ASTArena {
                 writeln!(f, "Fun(")?;
                 for case in cases {
                     self.indent(f, depth + 2)?;
-                    self.show_pat(&case.pat, f)?;
+                    for pat in case.pats.iter() {
+                        self.show_pat(pat, f)?;
+                        writeln!(f, ", ")?;
+                    }
                     writeln!(f, " =>")?;
                     self.indent(f, depth + 4)?;
                     self.show_expr(&self[case.expr], f, depth + 4)?;
@@ -229,7 +234,7 @@ impl ASTArena {
                 self.show_expr(&self[*expr], f, depth)?;
                 for case in cases {
                     self.indent(f, depth + 2)?;
-                    self.show_pat(&case.pat, f)?;
+                    self.show_pat(&case.pats[0], f)?;
                     writeln!(f, " =>")?;
                     self.indent(f, depth + 4)?;
                     self.show_expr(&self[case.expr], f, depth + 4)?;
@@ -315,7 +320,7 @@ pub enum Expr {
     Cat(Vec<ExprRef>),
     Chc(Vec<Choice>),
     Lit(Literal),
-    Ap(ExprRef, ExprRef),
+    Ap(ExprRef, Vec<ExprRef>),
     Tup(Vec<ExprRef>),
     Let(bool, Name, ExprRef, ExprRef),
     Fun(Vec<Case>),
@@ -340,7 +345,7 @@ impl ExprId {
 /// A single case in an anonymous function or `case` statement
 #[derive(Debug, Clone)]
 pub struct Case {
-    pub pat: Pat,
+    pub pats: Vec<Pat>,
     pub expr: ExprRef,
 }
 

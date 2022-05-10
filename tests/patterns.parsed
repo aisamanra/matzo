@@ -1,45 +1,54 @@
 Assn  f Fun(
-  x =>
+  x, 
+ =>
     Var(x)
 )
 
 Assn  f Fun(
-  _ =>
+  _, 
+ =>
     Var(x)
 )
 
 Assn  f Fun(
-  Str("foo") =>
+  Str("foo"), 
+ =>
     Str("!")
 )
 
 Assn  f Fun(
-  Bar =>
+  Bar, 
+ =>
     Str("?")
 )
 
 Assn  f Fun(
-  Num(55) =>
+  Num(55), 
+ =>
     Str("~")
 )
 
 Assn  f Fun(
-  Tup( ) =>
+  Tup( ), 
+ =>
     Var(x)
 )
 
 Assn  f Fun(
-  Tup( x ) =>
+  Tup( x ), 
+ =>
     Var(x)
 )
 
 Assn  f Fun(
-  Tup( x y ) =>
+  Tup( x y ), 
+ =>
     Var(x)
 )
 
 Assn  f Fun(
-  Tup( x y z ) =>
+  Tup( x y z ), 
+ =>
     Var(x)
 )
 

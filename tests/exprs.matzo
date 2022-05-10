@@ -6,7 +6,7 @@ puts This | That | The-Other;
 puts 5: This | That;
 
 (* application *)
-puts foo.bar.baz;
+puts foo[bar][baz];
 
 
 (* tuples *)
@@ -20,8 +20,8 @@ puts 0..20;
 puts x..y;
 
 (* application *)
-puts f.x;
+puts f[x];
 
 (* lambdas *)
-puts { x => x };
-puts { True => "yes" ; False => "no" };
+puts { [x] => x };
+puts { [True] => "yes" ; [False] => "no" };
