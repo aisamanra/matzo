@@ -3,6 +3,8 @@ extern crate lalrpop_util;
 
 pub mod ast;
 pub mod builtins;
+pub mod core;
+pub mod errors;
 pub mod interp;
 pub mod lexer;
 pub mod rand;

@@ -1,4 +1,6 @@
 use crate::ast::*;
+use crate::errors::MatzoError;
+use crate::lexer;
 use crate::lexer::Span;
 use crate::rand::*;
 
@@ -259,15 +261,33 @@ impl State {
     /// Evaluate this string as a standalone program, writing the
     /// results to stdout.
     pub fn run(&self, src: &str) -> Result<(), Error> {
-        let lexed = crate::lexer::tokens(src);
         let file = self.ast.borrow_mut().add_file(src.to_string());
+        if let Err(mtz) = self.run_file(src, file) {
+            let mut buf = String::new();
+            buf.push_str(&mtz.message);
+            buf.push('\n');
+            buf.push_str(&self.ast.borrow().get_line(file, mtz.span));
+            for ctx in mtz.context {
+                buf.push('\n');
+                buf.push_str(&ctx.message);
+                buf.push_str(&self.ast.borrow().get_line(file, ctx.span));
+            }
+            bail!("{}", buf);
+        }
+        Ok(())
+    }
+
+    fn run_file(&self, src: &str, file: FileRef) -> Result<(), MatzoError> {
+        let lexed = crate::lexer::tokens(src);
         let stmts = self
             .parser
-            .parse(&mut self.ast.borrow_mut(), file, lexed)
-            .map_err(|err| anyhow!("Got {:?}", err))?;
+            .parse(&mut self.ast.borrow_mut(), file, lexed);
+        let stmts = stmts
+            .map_err(MatzoError::from_parse_error)?;
         let mut stdout = io::stdout();
         for stmt in stmts {
-            self.execute(&stmt, &mut stdout)?;
+            self.execute(&stmt, &mut stdout)
+                .map_err(|err| MatzoError::new(Span::empty(), format!("{:?}", err)))?;
         }
         Ok(())
     }

@@ -77,6 +77,10 @@ impl ASTArena {
         FileRef { idx }
     }
 
+    pub fn get_file(&self, file: FileRef) -> &str {
+        &self.files[file.idx]
+    }
+
     pub fn get_line(&self, file: FileRef, span: Span) -> String {
         let mut line_number = 1;
         let mut start_of_line = 0;
