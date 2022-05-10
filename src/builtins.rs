@@ -70,6 +70,19 @@ pub fn builtins() -> Vec<BuiltinFunc> {
         },
 
         BuiltinFunc {
+            name: "add",
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [x, y] = exprs {
+                    let x = state.eval(*x, env)?.as_num(&state.ast.borrow())?;
+                    let y = state.eval(*y, env)?.as_num(&state.ast.borrow())?;
+                    Ok(Value::Lit(Literal::Num(x + y)))
+                } else {
+                    bail!("`add`: expected 2 arguments, got {}", exprs.len());
+                }
+            }),
+        },
+
+        BuiltinFunc {
             name: "sub",
             callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
                 if let [x, y] = exprs {
@@ -78,6 +91,19 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     Ok(Value::Lit(Literal::Num(x - y)))
                 } else {
                     bail!("`sub`: expected 2 arguments, got {}", exprs.len());
+                }
+            }),
+        },
+
+        BuiltinFunc {
+            name: "mul",
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [x, y] = exprs {
+                    let x = state.eval(*x, env)?.as_num(&state.ast.borrow())?;
+                    let y = state.eval(*y, env)?.as_num(&state.ast.borrow())?;
+                    Ok(Value::Lit(Literal::Num(x * y)))
+                } else {
+                    bail!("`mul`: expected 2 arguments, got {}", exprs.len());
                 }
             }),
         },
