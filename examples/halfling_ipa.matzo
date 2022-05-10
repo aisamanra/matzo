@@ -1,18 +1,15 @@
 (* these should probably be part of the stdlib eventually *)
-tuple-map := {func => {tup =>
-  tuple-fold.<{xs => {x => concat.<xs, <func.x>>}}, <>, tup>
-}};
-flatten := {t => tuple-fold.<{ x => { xs => x xs } }, "", t>};
+flatten := {[t] => tuple/fold[{ [x, xs] => x xs }, "", t]};
 
-word := {w => flatten.(tuple-map.orthography.w)};
-wd := concat.<begin, middle, end>;
-middle := syll | concat.<syll, syll> | concat.<syll, syll, syll> | concat.<syll, syll, syll, syll>;
+word := {[w] => flatten[tuple/map[orthography, w]]};
+wd := tuple/concat[<begin, middle, end>];
+middle := syll | tuple/concat[<syll, syll>] | tuple/concat[<syll, syll, syll>] | tuple/concat[<syll, syll, syll, syll>];
 syll := <cons, vowel>;
 end := <cons, vowel, final>
      | 2: <cons, ("eː" | "a"), final>
      | <"r"> | <"n"> ;
 
-orthography :=
+orthography := { [x] => case x in
   { "z"  => "s"
   ; "s"  => "ss"
   ; "dz" => "z"
@@ -33,8 +30,8 @@ orthography :=
   ; "ɾ"  => "r"
   ; "tɾ" => "tr"
   ; "ɾt" => "rt"
-  ; x    => x
-  };
+  ; _    => x
+  } };
 
 begin := <vowel> | <initcons, vowel>;
 
@@ -48,4 +45,4 @@ final := "s" | 6: "";
 
 
 fix wd;
-puts (word.wd) " (pronounced /" (flatten.wd) "/)";
+puts word[wd] " (pronounced /" flatten[wd] "/)";

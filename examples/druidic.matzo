@@ -1,5 +1,5 @@
 (* Druidic *)
-word := init (rep.<1|2,syll>) end;
+word := init (rep[1|2, syll]) end;
 init := 3: vowel | 2: '';
 syll := cons vowel;
 end ::= a e er ir;

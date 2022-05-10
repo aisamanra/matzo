@@ -1,4 +1,4 @@
-word := begin rep.<1..4, syll> end;
+word := begin rep[1..4, syll] end;
 syll := cons vowel;
 end := cons vowel final | cons "é" final | cons "a" final | "r" | "n";
 
