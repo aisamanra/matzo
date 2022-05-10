@@ -200,5 +200,25 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 }
             }),
         },
+
+        BuiltinFunc {
+            name: "tuple/map",
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [func, tup] = exprs {
+                    let func = state.eval(*func, env)?;
+                    let tup = state.eval(*tup, env)?;
+
+                    let mut new_tup = Vec::new();
+                    let closure = func.as_closure(&state.ast.borrow())?;
+                    for t in tup.as_tup(&state.ast.borrow())? {
+                        new_tup.push(Thunk::Value(state.eval_closure(closure, vec![t.clone()])?));
+                    }
+
+                    Ok(Value::Tup(new_tup))
+                } else {
+                    bail!("`tuple/map`: expected 2 arguments, got {}", exprs.len());
+                }
+            }),
+        },
     ]
 }
