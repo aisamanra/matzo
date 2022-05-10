@@ -2,8 +2,8 @@ use matzo::grammar;
 use matzo::interp;
 use matzo::lexer;
 
-use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 use std::io::Write;
 
 const MAX_RUN_EXPECTATIONS: u64 = 64;
@@ -15,7 +15,7 @@ fn generate_runs(source: &str) -> Result<BTreeMap<String, String>, Box<dyn std::
         let mut out = Vec::new();
         state.run_with_writer(source, &mut out)?;
         let out = std::str::from_utf8(&out).unwrap().trim().to_string();
-        if  let Entry::Vacant(e) = found_results.entry(out) {
+        if let Entry::Vacant(e) = found_results.entry(out) {
             e.insert(seed);
         }
     }

@@ -14,11 +14,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let mut buf = String::new();
                         let num = state.eval(*rep, env)?.as_num(&state.ast.borrow())?;
                         for _ in 0..num {
-                            buf.push_str(
-                                state
-                                    .eval(*expr, env)?
-                                    .as_str(&state.ast.borrow())?,
-                            );
+                            buf.push_str(state.eval(*expr, env)?.as_str(&state.ast.borrow())?);
                         }
                         Ok(Value::Lit(Literal::Str(buf)))
                     } else {
