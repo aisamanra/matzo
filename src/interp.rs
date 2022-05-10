@@ -26,6 +26,7 @@ pub enum Value {
 
 #[derive(Debug, Clone, Copy)]
 pub struct BuiltinRef {
+    name: &'static str,
     idx: usize,
 }
 
@@ -64,7 +65,7 @@ impl Value {
     pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, Error> {
         match self {
             Value::Closure(closure) => Ok(closure),
-            _ => self.with_str(ast, |s| bail!("Expected tuple, got {}", s)),
+            _ => self.with_str(ast, |s| bail!("Expected closure, got {}", s)),
         }
     }
 
@@ -95,7 +96,7 @@ impl Value {
                 buf.push('>');
                 f(&buf)
             }
-            Value::Builtin(func) => f(&format!("#<builtin {}>", func.idx)),
+            Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
             Value::Closure(_) => f("#<lambda ...>"),
         }
     }
@@ -191,10 +192,10 @@ impl Default for State {
 impl State {
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
-    pub fn new() -> State {
+    fn new_with_rand(rand: Box<dyn MatzoRand>) -> State {
         let mut s = State {
             root_scope: RefCell::new(HashMap::new()),
-            rand: RefCell::new(Box::new(DefaultRNG::new())),
+            rand: RefCell::new(rand),
             parser: crate::grammar::StmtsParser::new(),
             expr_parser: crate::grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
@@ -203,9 +204,13 @@ impl State {
         for builtin in crate::builtins::builtins() {
             let idx = s.builtins.len();
             let sym = s.ast.borrow_mut().add_string(builtin.name);
-            s.root_scope
-                .borrow_mut()
-                .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
+            s.root_scope.borrow_mut().insert(
+                sym,
+                Thunk::Builtin(BuiltinRef {
+                    idx,
+                    name: builtin.name,
+                }),
+            );
             s.builtins.push(builtin);
         }
         s
@@ -213,24 +218,14 @@ impl State {
 
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
+    pub fn new() -> State {
+        State::new_with_rand(Box::new(DefaultRNG::new()))
+    }
+
+    /// This initializes a new `State` and adds all the builtin
+    /// functions to the root scope
     pub fn new_from_seed(seed: u64) -> State {
-        let mut s = State {
-            root_scope: RefCell::new(HashMap::new()),
-            rand: RefCell::new(Box::new(SeededRNG::from_seed(seed))),
-            parser: crate::grammar::StmtsParser::new(),
-            expr_parser: crate::grammar::ExprRefParser::new(),
-            ast: RefCell::new(ASTArena::new()),
-            builtins: Vec::new(),
-        };
-        for builtin in crate::builtins::builtins() {
-            let idx = s.builtins.len();
-            let sym = s.ast.borrow_mut().add_string(builtin.name);
-            s.root_scope
-                .borrow_mut()
-                .insert(sym, Thunk::Builtin(BuiltinRef { idx }));
-            s.builtins.push(builtin);
-        }
-        s
+        State::new_with_rand(Box::new(SeededRNG::from_seed(seed)))
     }
 
     /// Get the underlying AST. (This is mostly useful for testing
