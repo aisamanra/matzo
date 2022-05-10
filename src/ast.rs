@@ -95,7 +95,7 @@ impl ASTArena {
             if ch == '\n' {
                 if i < span.start as usize {
                     line_number += 1;
-                    start_of_line = i;
+                    start_of_line = i + 1;
                 }
                 if i >= span.end as usize && end_of_line.is_none() {
                     end_of_line = Some(i);

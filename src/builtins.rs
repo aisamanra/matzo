@@ -4,9 +4,10 @@ use crate::interp::*;
 
 fn arity_error(func: &str, expected: usize, actual: &[ExprRef]) -> Result<Value, MatzoError> {
     let msg = format!(
-        "`{}`: expected {} arguments, got {}",
+        "`{}`: expected {} argument{}, got {}",
         func,
         expected,
+        if expected == 1 { "" } else { "s" },
         actual.len()
     );
     if actual.is_empty() {
