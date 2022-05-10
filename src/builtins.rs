@@ -1,15 +1,20 @@
 use crate::ast::*;
-use crate::interp::*;
 use crate::errors::MatzoError;
+use crate::interp::*;
 
 fn arity_error(func: &str, expected: usize, actual: &[ExprRef]) -> Result<Value, MatzoError> {
-    let msg = format!("`{}`: expected {} arguments, got {}", func, expected, actual.len());
+    let msg = format!(
+        "`{}`: expected {} arguments, got {}",
+        func,
+        expected,
+        actual.len()
+    );
     if actual.is_empty() {
         Err(MatzoError::new(Span::empty(), msg))
     } else {
         let span = Span {
             start: actual[0].span.start,
-            end: actual[actual.len()-1].span.end,
+            end: actual[actual.len() - 1].span.end,
         };
         Err(MatzoError::new(span, msg))
     }

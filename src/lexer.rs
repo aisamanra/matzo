@@ -1,5 +1,5 @@
+pub use crate::core::{FileRef, Span};
 use logos::{Lexer, Logos};
-pub use crate::core::{Span, FileRef};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Located<T> {

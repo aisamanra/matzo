@@ -1,10 +1,9 @@
 use crate::ast::*;
 use crate::errors::MatzoError;
-use crate::lexer;
 use crate::lexer::Span;
 use crate::rand::*;
 
-use anyhow::{anyhow, bail, Error};
+use anyhow::{bail, Error};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -43,7 +42,9 @@ impl Value {
     pub fn as_num(&self, ast: &ASTArena) -> Result<i64, MatzoError> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
-            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected number, got {}", s)))),
+            _ => self.with_str(ast, |s| {
+                return Err(MatzoError::no_loc(format!("Expected number, got {}", s)));
+            }),
         }
     }
 
@@ -51,7 +52,9 @@ impl Value {
     pub fn as_str(&self, ast: &ASTArena) -> Result<&str, MatzoError> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
-            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected string, got {}", s)))),
+            _ => self.with_str(ast, |s| {
+                return Err(MatzoError::no_loc(format!("Expected string, got {}", s)));
+            }),
         }
     }
 
@@ -59,7 +62,9 @@ impl Value {
     pub fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], MatzoError> {
         match self {
             Value::Tup(vals) => Ok(vals),
-            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected tuple, got {}", s)))),
+            _ => self.with_str(ast, |s| {
+                return Err(MatzoError::no_loc(format!("Expected tuple, got {}", s)));
+            }),
         }
     }
 
@@ -67,7 +72,9 @@ impl Value {
     pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, MatzoError> {
         match self {
             Value::Closure(closure) => Ok(closure),
-            _ => self.with_str(ast, |s| return Err(MatzoError::no_loc(format!("Expected closure, got {}", s)))),
+            _ => self.with_str(ast, |s| {
+                return Err(MatzoError::no_loc(format!("Expected closure, got {}", s)));
+            }),
         }
     }
 
@@ -249,9 +256,10 @@ impl State {
             }
         } else {
             match self.root_scope.borrow().get(&name.item) {
-                None => {
-                    Err(MatzoError::new(name.span, format!("Undefined name {}", &self.ast.borrow()[name.item])))
-                }
+                None => Err(MatzoError::new(
+                    name.span,
+                    format!("Undefined name {}", &self.ast.borrow()[name.item]),
+                )),
                 Some(ne) => Ok(ne.clone()),
             }
         }
@@ -260,8 +268,14 @@ impl State {
     /// Evaluate this string as a standalone program, writing the
     /// results to stdout.
     pub fn run(&self, src: &str) -> Result<(), Error> {
+        self.run_with_writer(src, &mut io::stdout())
+    }
+
+    /// Evaluate this string as a standalone program, writing the
+    /// results to the provided writer.
+    pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
         let file = self.ast.borrow_mut().add_file(src.to_string());
-        if let Err(mtz) = self.run_file(src, file) {
+        if let Err(mtz) = self.run_file(src, file, w) {
             let mut buf = String::new();
             buf.push_str(&mtz.message);
             buf.push('\n');
@@ -276,31 +290,17 @@ impl State {
         Ok(())
     }
 
-    fn run_file(&self, src: &str, file: FileRef) -> Result<(), MatzoError> {
+    fn run_file(
+        &self,
+        src: &str,
+        file: FileRef,
+        mut w: &mut impl std::io::Write,
+    ) -> Result<(), MatzoError> {
         let lexed = crate::lexer::tokens(src);
-        let stmts = self
-            .parser
-            .parse(&mut self.ast.borrow_mut(), file, lexed);
-        let stmts = stmts
-            .map_err(MatzoError::from_parse_error)?;
-        let mut stdout = io::stdout();
+        let stmts = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed);
+        let stmts = stmts.map_err(MatzoError::from_parse_error)?;
         for stmt in stmts {
-            self.execute(&stmt, &mut stdout)?;
-        }
-        Ok(())
-    }
-
-    /// Evaluate this string as a standalone program, writing the
-    /// results to the provided writer.
-    pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
-        let lexed = crate::lexer::tokens(src);
-        let file = self.ast.borrow_mut().add_file(src.to_string());
-        let stmts = self
-            .parser
-            .parse(&mut self.ast.borrow_mut(), file, lexed)
-            .map_err(|err| anyhow!("Got {:?}", err))?;
-        for stmt in stmts {
-            self.execute(&stmt, &mut *w)?;
+            self.execute(&stmt, &mut w)?;
         }
         Ok(())
     }
@@ -640,13 +640,17 @@ impl State {
     /// function to mutably replace it with progressively more
     /// evaluated versions of the same expression, and then that's the
     /// thing we put into scope in the body of the function.
-    pub fn eval_closure(&self, closure: &Closure, mut scruts: Vec<Thunk>) -> Result<Value, MatzoError> {
+    pub fn eval_closure(
+        &self,
+        closure: &Closure,
+        mut scruts: Vec<Thunk>,
+    ) -> Result<Value, MatzoError> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
             Expr::Fun(cases) => cases,
             Expr::Case(_, cases) => cases,
             // see the note attached to the definition of `Closure`
-            other => panic!("Expected a `Fun` or `Case` in a closure, found {:?}", other)
+            other => panic!("Expected a `Fun` or `Case` in a closure, found {:?}", other),
         };
 
         // for each case
@@ -681,7 +685,10 @@ impl State {
         }
 
         // we couldn't find a matching pattern, so throw an error
-        Err(MatzoError::new(Span::empty(), format!("No pattern matched {:?}", scruts)))
+        Err(MatzoError::new(
+            Span::empty(),
+            format!("No pattern matched {:?}", scruts),
+        ))
     }
 
     /// attempt to match the thunk `scrut` against the pattern
