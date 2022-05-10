@@ -8,164 +8,158 @@ pub fn builtins() -> Vec<BuiltinFunc> {
     vec![
         BuiltinFunc {
             name: "rep",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let (rep, expr) = {
-                    let ast = state.ast.borrow();
-                    let args = match &ast[expr] {
-                        Expr::Tup(tup) => tup,
-                        _ => {
-                            let span = state.ast.borrow().get_line(expr.file, expr.span);
-                            bail!("`rep`: expected tuple\n{}", span)
-                        }
-                    };
-                    if args.len() != 2 {
-                        let span = state.ast.borrow().get_line(expr.file, expr.span);
-                        bail!(
-                            "`rep`: expected two arguments, got {}\n{}",
-                            args.len(),
-                            span
-                        )
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [rep, expr] = exprs {
+                    let mut buf = String::new();
+                    let num = state.eval(*rep, env)?.as_num(&state.ast.borrow())?;
+                    for _ in 0..num {
+                        buf.push_str(
+                            &state
+                                .eval(*expr, env)?
+                                .as_str(&state.ast.borrow())?
+                                .to_string(),
+                        );
                     }
-                    (args[0], args[1])
-                };
-                let mut buf = String::new();
-                let num = state.eval(rep, env)?.as_num(&state.ast.borrow())?;
-                for _ in 0..num {
-                    buf.push_str(
-                        &state
-                            .eval(expr, env)?
-                            .as_str(&state.ast.borrow())?
-                            .to_string(),
-                    );
+                    Ok(Value::Lit(Literal::Str(buf)))
+                } else {
+                    bail!("`rep`: expected two arguments, got {}", exprs.len())
                 }
-                Ok(Value::Lit(Literal::Str(buf)))
             }),
         },
 
         BuiltinFunc {
             name: "str/upper",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let s = state.eval(expr, env)?;
-                Ok(Value::Lit(Literal::Str(
-                    s.as_str(&state.ast.borrow())?.to_uppercase(),
-                )))
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [expr] = exprs {
+                    let s = state.eval(*expr, env)?;
+                    Ok(Value::Lit(Literal::Str(
+                        s.as_str(&state.ast.borrow())?.to_uppercase(),
+                    )))
+                } else {
+                    bail!("`str/capitalize`: expected 1 argument1, got {}", exprs.len());
+                }
             }),
         },
 
         BuiltinFunc {
             name: "str/capitalize",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let s = state.eval(expr, env)?;
-                Ok(Value::Lit(Literal::Str(titlecase::titlecase(
-                    s.as_str(&state.ast.borrow())?,
-                ))))
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [expr] = exprs {
+                    let s = state.eval(*expr, env)?;
+                    Ok(Value::Lit(Literal::Str(titlecase::titlecase(
+                        s.as_str(&state.ast.borrow())?,
+                    ))))
+                } else {
+                    bail!("`str/capitalize`: expected 1 argument1, got {}", exprs.len());
+                }
             }),
         },
 
         BuiltinFunc {
             name: "str/lower",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let s = state.eval(expr, env)?;
-                Ok(Value::Lit(Literal::Str(
-                    s.as_str(&state.ast.borrow())?.to_lowercase(),
-                )))
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [expr] = exprs {
+                    let s = state.eval(*expr, env)?;
+                    Ok(Value::Lit(Literal::Str(
+                        s.as_str(&state.ast.borrow())?.to_lowercase(),
+                    )))
+                } else {
+                    bail!("`str/lower`: expected 1 argument1, got {}", exprs.len());
+                }
             }),
         },
 
         BuiltinFunc {
             name: "sub",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let val = state.eval(expr, env)?;
-                let args = val.as_tup(&state.ast.borrow())?;
-                if let [x, y] = args {
-                    let x = state.hnf(x)?.as_num(&state.ast.borrow())?;
-                    let y = state.hnf(y)?.as_num(&state.ast.borrow())?;
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [x, y] = exprs {
+                    let x = state.eval(*x, env)?.as_num(&state.ast.borrow())?;
+                    let y = state.eval(*y, env)?.as_num(&state.ast.borrow())?;
                     Ok(Value::Lit(Literal::Num(x - y)))
                 } else {
-                    bail!("`sub`: expected 2 arguments, got {}", args.len());
+                    bail!("`sub`: expected 2 arguments, got {}", exprs.len());
                 }
             }),
         },
 
         BuiltinFunc {
             name: "tuple/len",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let args = match state.eval(expr, env)? {
-                    Value::Tup(tup) => tup,
-                    _ => bail!("`tup/len`: expected tuple"),
-                };
-                Ok(Value::Lit(Literal::Num(args.len() as i64)))
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [expr] = exprs {
+                    let tup = state.eval(*expr, env)?;
+                    Ok(Value::Lit(Literal::Num(tup.as_tup(&state.ast.borrow())?.len() as i64)))
+                } else {
+                    bail!("`tuple/len`: expected 1 argument, got {}", exprs.len())
+                }
             }),
         },
 
         BuiltinFunc {
             name: "tuple/concat",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let val = state.eval(expr, env)?;
-                let tup = val.as_tup(&state.ast.borrow())?;
-                let mut contents = Vec::new();
-                for elem in tup {
-                    for th in state.hnf(elem)?.as_tup(&state.ast.borrow())? {
-                        contents.push(th.clone());
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [expr] = exprs {
+                    let val = state.eval(*expr, env)?;
+                    let tup = val.as_tup(&state.ast.borrow())?;
+                    let mut contents = Vec::new();
+                    for elem in tup {
+                        for th in state.hnf(elem)?.as_tup(&state.ast.borrow())? {
+                            contents.push(th.clone());
+                        }
                     }
+                    Ok(Value::Tup(contents))
+                } else {
+                    bail!("tuple/concat: expected 1 argument, got {}", exprs.len());
                 }
-                Ok(Value::Tup(contents))
             }),
         },
 
         BuiltinFunc {
             name: "tuple/index",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let val = state.eval(expr, env)?;
-                let args = val.as_tup(&state.ast.borrow())?;
-                if let [tup, idx] = args {
-                    let tup = state.hnf(tup)?;
-                    let idx = state.hnf(idx)?;
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [tup, idx] = exprs {
+                    let tup = state.eval(*tup, env)?;
+                    let idx = state.eval(*idx, env)?;
                     state.hnf(
                         &tup.as_tup(&state.ast.borrow())?
                             [idx.as_num(&state.ast.borrow())? as usize],
                     )
                 } else {
-                    bail!("`tuple-index`: expected 2 arguments, got {}", args.len());
+                    bail!("`tuple/index`: expected 2 arguments, got {}", exprs.len());
                 }
             }),
         },
 
         BuiltinFunc {
             name: "tuple/replace",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let val = state.eval(expr, env)?;
-                let args = val.as_tup(&state.ast.borrow())?;
-                if let [tup, idx, new] = args {
-                    let tup_val = state.hnf(tup)?;
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [tup, idx, new] = exprs {
+                    let tup_val = state.eval(*tup, env)?;
                     let tup = tup_val.as_tup(&state.ast.borrow())?;
-                    let idx = state.hnf(idx)?.as_num(&state.ast.borrow())?;
+                    let idx = state.eval(*idx, env)?.as_num(&state.ast.borrow())?;
 
                     let mut modified = Vec::with_capacity(tup.len());
                     for i in 0..idx {
                         modified.push(tup[i as usize].clone());
                     }
-                    modified.push(new.clone());
+                    modified.push(Thunk::Expr(*new, env.clone()));
                     for i in (idx + 1)..(tup.len() as i64) {
                         modified.push(tup[i as usize].clone());
                     }
                     Ok(Value::Tup(modified))
                 } else {
-                    bail!("`tuple-index`: expected 2 arguments, got {}", args.len());
+                    bail!("`tuple/replace`: expected 3 arguments, got {}", exprs.len());
                 }
             }),
         },
 
         BuiltinFunc {
             name: "tuple/fold",
-            callback: Box::new(|state: &State, expr: ExprRef, env: &Env| -> Result<Value, Error> {
-                let val = state.eval(expr, env)?;
-                let args = val.as_tup(&state.ast.borrow())?;
-                if let [func, init, tup] = args {
-                    let func = state.hnf(func)?;
-                    let tup = state.hnf(tup)?;
+            callback: Box::new(|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, Error> {
+                if let [func, init, tup] = exprs {
+                    let func = state.eval(*func, env)?;
+                    let tup = state.eval(*tup, env)?;
 
-                    let mut result = init.clone();
+                    let mut result = Thunk::Expr(*init, env.clone());
                     for t in tup.as_tup(&state.ast.borrow())? {
                         result = Thunk::Value(
                             state.eval_closure(
@@ -176,7 +170,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
 
                     state.hnf(&result)
                 } else {
-                    bail!("`tuple-fold`: expected 3 arguments, got {}", args.len());
+                    bail!("`tuple/fold`: expected 3 arguments, got {}", exprs.len());
                 }
             }),
         },
