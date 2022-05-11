@@ -8,7 +8,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::io;
-use std::io::Write;
 use std::rc::Rc;
 
 /// A `Value` is a representation of the result of evaluation. Note
@@ -271,21 +270,25 @@ impl State {
         self.run_with_writer(src, &mut io::stdout())
     }
 
+    fn print_error(&self, file: FileRef, mtz: MatzoError) -> String {
+        let mut buf = String::new();
+        buf.push_str(&mtz.message);
+        buf.push('\n');
+        buf.push_str(&self.ast.borrow().get_line(file, mtz.span));
+        for ctx in mtz.context {
+            buf.push('\n');
+            buf.push_str(&ctx.message);
+            buf.push_str(&self.ast.borrow().get_line(file, ctx.span));
+        }
+        buf
+    }
+
     /// Evaluate this string as a standalone program, writing the
     /// results to the provided writer.
     pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
         let file = self.ast.borrow_mut().add_file(src.to_string());
         if let Err(mtz) = self.run_file(src, file, w) {
-            let mut buf = String::new();
-            buf.push_str(&mtz.message);
-            buf.push('\n');
-            buf.push_str(&self.ast.borrow().get_line(file, mtz.span));
-            for ctx in mtz.context {
-                buf.push('\n');
-                buf.push_str(&ctx.message);
-                buf.push_str(&self.ast.borrow().get_line(file, ctx.span));
-            }
-            bail!("{}", buf);
+            bail!("{}", self.print_error(file, mtz));
         }
         Ok(())
     }
@@ -305,6 +308,33 @@ impl State {
         Ok(())
     }
 
+    fn repl_parse(&self, src: &str) -> Result<Vec<Stmt>, MatzoError> {
+        let lexed = crate::lexer::tokens(src);
+        let file = self.ast.borrow_mut().add_file(src.to_string());
+        let stmts = {
+            let mut ast = self.ast.borrow_mut();
+            self.parser.parse(&mut ast, file, lexed)
+        };
+        match stmts {
+            Ok(stmts) => Ok(stmts),
+            Err(err) => {
+                // this might have just been an expression instead, so
+                // try parsing a single expression to see if that
+                // works
+                let lexed = crate::lexer::tokens(src);
+                let expr = {
+                    let mut ast = self.ast.borrow_mut();
+                    self.expr_parser.parse(&mut ast, file, lexed)
+                };
+                if let Ok(expr) = expr {
+                    Ok(vec![Stmt::Puts(expr)])
+                } else {
+                    Err(MatzoError::from_parse_error(err))
+                }
+            }
+        }
+    }
+
     /// Evaluate this string as a fragment in a REPL, writing the
     /// results to stdout. One way this differs from the standalone
     /// program is that it actually tries parsing twice: first it
@@ -313,33 +343,18 @@ impl State {
     /// it allows the REPL to respond by printing values when someone
     /// simply types an expression.
     pub fn run_repl(&self, src: &str) -> Result<(), Error> {
-        let lexed = crate::lexer::tokens(src);
         let file = self.ast.borrow_mut().add_file(src.to_string());
-        let stmts = {
-            let mut ast = self.ast.borrow_mut();
-            self.parser.parse(&mut ast, file, lexed)
-        };
-        match stmts {
-            Ok(stmts) => {
-                for stmt in stmts {
-                    self.execute(&stmt, io::stdout())?;
-                }
-            }
-            Err(err) => {
-                let lexed = crate::lexer::tokens(src);
-                let expr = {
-                    let mut ast = self.ast.borrow_mut();
-                    self.expr_parser.parse(&mut ast, file, lexed)
-                };
-                if let Ok(expr) = expr {
-                    let val = self.eval(expr, &None)?;
-                    let val = self.force(val)?;
-                    writeln!(io::stdout(), "{}", val.to_string(&self.ast.borrow()))?;
-                } else {
-                    bail!("{:?}", err);
-                }
-            }
-        };
+        if let Err(mtz) = self.repl_main(src) {
+            bail!("{}", self.print_error(file, mtz));
+        }
+        Ok(())
+    }
+
+    fn repl_main(&self, src: &str) -> Result<(), MatzoError> {
+        let stmts = self.repl_parse(src)?;
+        for stmt in stmts {
+            self.execute(&stmt, io::stdout())?;
+        }
         Ok(())
     }
 
