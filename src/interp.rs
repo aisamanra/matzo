@@ -72,7 +72,10 @@ impl Value {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(span, format!("Expected closure, got {}", s)));
+                return Err(MatzoError::new(
+                    span,
+                    format!("Expected closure, got {}", s),
+                ));
             }),
         }
     }
@@ -550,7 +553,9 @@ impl State {
             // for a range, choose randomly between the start and end
             // expressions
             Expr::Range(from, to) => {
-                let from = self.eval(*from, env)?.as_num(&self.ast.borrow(), from.span)?;
+                let from = self
+                    .eval(*from, env)?
+                    .as_num(&self.ast.borrow(), from.span)?;
                 let to = self.eval(*to, env)?.as_num(&self.ast.borrow(), to.span)?;
                 Ok(Value::Lit(Literal::Num(
                     self.rand.borrow_mut().gen_range_i64(from, to + 1),

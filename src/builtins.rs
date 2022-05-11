@@ -30,7 +30,9 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     if let [rep, expr] = exprs {
                         let mut buf = String::new();
-                        let num = state.eval(*rep, env)?.as_num(&state.ast.borrow(), rep.span)?;
+                        let num = state
+                            .eval(*rep, env)?
+                            .as_num(&state.ast.borrow(), rep.span)?;
                         for _ in 0..num {
                             buf.push_str(
                                 state
@@ -242,7 +244,9 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     if let [tup, idx, new] = exprs {
                         let tup_val = state.eval(*tup, env)?;
                         let tup = tup_val.as_tup(&state.ast.borrow(), tup.span)?;
-                        let idx = state.eval(*idx, env)?.as_num(&state.ast.borrow(), idx.span)?;
+                        let idx = state
+                            .eval(*idx, env)?
+                            .as_num(&state.ast.borrow(), idx.span)?;
 
                         let mut modified = Vec::with_capacity(tup.len());
                         for i in 0..idx {
