@@ -38,11 +38,11 @@ impl Value {
 
 impl Value {
     /// Convert this value to a Rust integer, failing otherwise
-    pub fn as_num(&self, ast: &ASTArena) -> Result<i64, MatzoError> {
+    pub fn as_num(&self, ast: &ASTArena, span: Span) -> Result<i64, MatzoError> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::no_loc(format!("Expected number, got {}", s)));
+                return Err(MatzoError::new(span, format!("Expected number, got {}", s)));
             }),
         }
     }
@@ -68,11 +68,11 @@ impl Value {
     }
 
     /// Convert this value to a closure, failing otherwise
-    pub fn as_closure(&self, ast: &ASTArena) -> Result<&Closure, MatzoError> {
+    pub fn as_closure(&self, ast: &ASTArena, span: Span) -> Result<&Closure, MatzoError> {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::no_loc(format!("Expected closure, got {}", s)));
+                return Err(MatzoError::new(span, format!("Expected closure, got {}", s)));
             }),
         }
     }
@@ -550,8 +550,8 @@ impl State {
             // for a range, choose randomly between the start and end
             // expressions
             Expr::Range(from, to) => {
-                let from = self.eval(*from, env)?.as_num(&self.ast.borrow())?;
-                let to = self.eval(*to, env)?.as_num(&self.ast.borrow())?;
+                let from = self.eval(*from, env)?.as_num(&self.ast.borrow(), from.span)?;
+                let to = self.eval(*to, env)?.as_num(&self.ast.borrow(), to.span)?;
                 Ok(Value::Lit(Literal::Num(
                     self.rand.borrow_mut().gen_range_i64(from, to + 1),
                 )))
