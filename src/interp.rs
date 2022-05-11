@@ -48,21 +48,21 @@ impl Value {
     }
 
     /// Convert this value to a Rust string, failing otherwise
-    pub fn as_str(&self, ast: &ASTArena) -> Result<&str, MatzoError> {
+    pub fn as_str(&self, ast: &ASTArena, span: Span) -> Result<&str, MatzoError> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::no_loc(format!("Expected string, got {}", s)));
+                return Err(MatzoError::new(span, format!("Expected string, got {}", s)));
             }),
         }
     }
 
     /// Convert this value to a Rust slice, failing otherwise
-    pub fn as_tup(&self, ast: &ASTArena) -> Result<&[Thunk], MatzoError> {
+    pub fn as_tup(&self, ast: &ASTArena, span: Span) -> Result<&[Thunk], MatzoError> {
         match self {
             Value::Tup(vals) => Ok(vals),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::no_loc(format!("Expected tuple, got {}", s)));
+                return Err(MatzoError::new(span, format!("Expected tuple, got {}", s)));
             }),
         }
     }

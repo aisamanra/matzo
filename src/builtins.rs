@@ -32,7 +32,11 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let mut buf = String::new();
                         let num = state.eval(*rep, env)?.as_num(&state.ast.borrow())?;
                         for _ in 0..num {
-                            buf.push_str(state.eval(*expr, env)?.as_str(&state.ast.borrow())?);
+                            buf.push_str(
+                                state
+                                    .eval(*expr, env)?
+                                    .as_str(&state.ast.borrow(), expr.span)?,
+                            );
                         }
                         Ok(Value::Lit(Literal::Str(buf)))
                     } else {
@@ -48,7 +52,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     if let [expr] = exprs {
                         let s = state.eval(*expr, env)?;
                         Ok(Value::Lit(Literal::Str(
-                            s.as_str(&state.ast.borrow())?.to_uppercase(),
+                            s.as_str(&state.ast.borrow(), expr.span)?.to_uppercase(),
                         )))
                     } else {
                         arity_error("str/upper", 1, exprs)
@@ -63,7 +67,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     if let [expr] = exprs {
                         let s = state.eval(*expr, env)?;
                         Ok(Value::Lit(Literal::Str(titlecase::titlecase(
-                            s.as_str(&state.ast.borrow())?,
+                            s.as_str(&state.ast.borrow(), expr.span)?,
                         ))))
                     } else {
                         arity_error("str/capitalize", 1, exprs)
@@ -78,11 +82,59 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     if let [expr] = exprs {
                         let s = state.eval(*expr, env)?;
                         Ok(Value::Lit(Literal::Str(
-                            s.as_str(&state.ast.borrow())?.to_lowercase(),
+                            s.as_str(&state.ast.borrow(), expr.span)?.to_lowercase(),
                         )))
                     } else {
                         arity_error("str/lower", 1, exprs)
                     }
+                },
+            ),
+        },
+        BuiltinFunc {
+            name: "wd",
+            callback: Box::new(
+                |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
+                    let mut buf = String::new();
+                    for expr in exprs {
+                        let s = state.eval(*expr, env)?;
+                        buf.push_str(s.as_str(&state.ast.borrow(), expr.span)?);
+                    }
+                    Ok(Value::Lit(Literal::Str(buf)))
+                },
+            ),
+        },
+        BuiltinFunc {
+            name: "se",
+            callback: Box::new(
+                |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
+                    let mut buf = String::new();
+                    let mut capitalized = false;
+                    let mut last_char = '\0';
+                    for expr in exprs.iter() {
+                        let s = state.eval(*expr, env)?;
+                        let s = s.as_str(&state.ast.borrow(), expr.span)?;
+                        if !capitalized && !s.trim().is_empty() {
+                            capitalized = true;
+                            let mut chars = s.chars();
+                            for c in chars.next().unwrap().to_uppercase() {
+                                buf.push(c);
+                            }
+                            for c in chars {
+                                buf.push(c);
+                            }
+                        } else if last_char.is_alphanumeric()
+                            && s.chars().next().map_or(false, |c| c.is_alphanumeric())
+                        {
+                            buf.push(' ');
+                            buf.push_str(s.trim());
+                        } else {
+                            buf.push_str(s.trim());
+                        }
+                        if buf.len() > 0 {
+                            last_char = buf.chars().last().unwrap();
+                        }
+                    }
+                    Ok(Value::Lit(Literal::Str(buf)))
                 },
             ),
         },
@@ -135,7 +187,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     if let [expr] = exprs {
                         let tup = state.eval(*expr, env)?;
                         Ok(Value::Lit(Literal::Num(
-                            tup.as_tup(&state.ast.borrow())?.len() as i64,
+                            tup.as_tup(&state.ast.borrow(), expr.span)?.len() as i64,
                         )))
                     } else {
                         arity_error("tuple/len", 1, exprs)
@@ -149,10 +201,13 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     if let [expr] = exprs {
                         let val = state.eval(*expr, env)?;
-                        let tup = val.as_tup(&state.ast.borrow())?;
+                        let tup = val.as_tup(&state.ast.borrow(), expr.span)?;
                         let mut contents = Vec::new();
                         for elem in tup {
-                            for th in state.hnf(elem)?.as_tup(&state.ast.borrow())? {
+                            for th in state
+                                .hnf(elem)?
+                                .as_tup(&state.ast.borrow(), Span::empty())?
+                            {
                                 contents.push(th.clone());
                             }
                         }
@@ -167,11 +222,11 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             name: "tuple/index",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
-                    if let [tup, idx] = exprs {
-                        let tup = state.eval(*tup, env)?;
+                    if let [tup_e, idx] = exprs {
+                        let tup = state.eval(*tup_e, env)?;
                         let idx = state.eval(*idx, env)?;
                         state.hnf(
-                            &tup.as_tup(&state.ast.borrow())?
+                            &tup.as_tup(&state.ast.borrow(), tup_e.span)?
                                 [idx.as_num(&state.ast.borrow())? as usize],
                         )
                     } else {
@@ -186,7 +241,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     if let [tup, idx, new] = exprs {
                         let tup_val = state.eval(*tup, env)?;
-                        let tup = tup_val.as_tup(&state.ast.borrow())?;
+                        let tup = tup_val.as_tup(&state.ast.borrow(), tup.span)?;
                         let idx = state.eval(*idx, env)?.as_num(&state.ast.borrow())?;
 
                         let mut modified = Vec::with_capacity(tup.len());
@@ -208,12 +263,12 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             name: "tuple/fold",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
-                    if let [func, init, tup] = exprs {
+                    if let [func, init, tup_e] = exprs {
                         let func = state.eval(*func, env)?;
-                        let tup = state.eval(*tup, env)?;
+                        let tup = state.eval(*tup_e, env)?;
 
                         let mut result = Thunk::Expr(*init, env.clone());
-                        for t in tup.as_tup(&state.ast.borrow())? {
+                        for t in tup.as_tup(&state.ast.borrow(), tup_e.span)? {
                             result = Thunk::Value(state.eval_closure(
                                 func.as_closure(&state.ast.borrow())?,
                                 vec![result, t.clone()],
@@ -231,13 +286,13 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             name: "tuple/map",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
-                    if let [func, tup] = exprs {
+                    if let [func, tup_e] = exprs {
                         let func = state.eval(*func, env)?;
-                        let tup = state.eval(*tup, env)?;
+                        let tup = state.eval(*tup_e, env)?;
 
                         let mut new_tup = Vec::new();
                         let closure = func.as_closure(&state.ast.borrow())?;
-                        for t in tup.as_tup(&state.ast.borrow())? {
+                        for t in tup.as_tup(&state.ast.borrow(), tup_e.span)? {
                             new_tup
                                 .push(Thunk::Value(state.eval_closure(closure, vec![t.clone()])?));
                         }
