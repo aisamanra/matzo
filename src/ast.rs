@@ -77,7 +77,15 @@ impl ASTArena {
         FileRef { idx }
     }
 
+    pub fn get_file(&self, file: FileRef) -> &str {
+        &self.files[file.idx]
+    }
+
     pub fn get_line(&self, file: FileRef, span: Span) -> String {
+        if !span.exists() {
+            return String::new();
+        }
+
         let mut line_number = 1;
         let mut start_of_line = 0;
         let mut end_of_line = None;
@@ -87,7 +95,7 @@ impl ASTArena {
             if ch == '\n' {
                 if i < span.start as usize {
                     line_number += 1;
-                    start_of_line = i;
+                    start_of_line = i + 1;
                 }
                 if i >= span.end as usize && end_of_line.is_none() {
                     end_of_line = Some(i);

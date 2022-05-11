@@ -2,7 +2,7 @@ gender:= Male | Female | Unspec;
 byGender := { [m,f,n] => { [Male] => m; [Female] => f; [_] => n }};
 
 ending  := byGender["o","a","e"];
-pronoun := byGender["He","She","They"];
+pronoun := byGender["he","she","they"];
 noun    := byGender["man","woman","person"];
 are     := byGender["is","is","are"];
 have    := byGender["has", "has", "have"];
@@ -22,6 +22,7 @@ job := { [g] =>
   | case g in
       { Male   => "fisherman"
       ; Female => "fisherwoman"
+      ; _      => "fisher"
       } };
 tool := { ["stonemason"] => "chisel"
         ; ["baker"]      => "bowl"
@@ -34,10 +35,38 @@ adjective ::= happy cheerful focused quiet meek rash;
 person :=
   let fix my-gender := gender in {
   let fix my-job := job[my-gender] in {
-    "You come across " str/capitalize[name[my-gender]] ", a " noun[my-gender]
-      " from the city of " str/capitalize[name[Female]] ". "
-      pronoun[my-gender] " " are[my-gender] " a hardworking " my-job " with "
-      hairColor " hair and " eyeColor " eyes. "
-      str/capitalize[pronoun[my-gender]] " "
-      have[my-gender] " a " tool[my-job] " and " are[my-gender] " very " adjective "." } };
+    se[
+      "You come across",
+      str/capitalize[name[my-gender]],
+      ", a",
+      noun[my-gender],
+      "from the city of",
+      str/capitalize[name[Female]]
+      "."
+    ]
+    " "
+    se[
+      pronoun[my-gender],
+      are[my-gender],
+      "a hardworking",
+      my-job,
+      "with",
+      hairColor,
+      "hair and",
+      eyeColor,
+      "eyes."
+    ]
+    " "
+    se[
+      pronoun[my-gender],
+      have[my-gender],
+      "a",
+      tool[my-job],
+      "and",
+      are[my-gender],
+      "very",
+      adjective,
+      "."
+    ]
+  } };
 puts person;

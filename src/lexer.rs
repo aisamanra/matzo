@@ -1,29 +1,5 @@
+pub use crate::core::{FileRef, Span};
 use logos::{Lexer, Logos};
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct FileRef {
-    pub idx: usize,
-}
-
-/// A location in a source file
-#[derive(Debug, Clone, Copy)]
-pub struct Span {
-    pub start: u32,
-    pub end: u32,
-}
-
-impl Span {
-    pub fn empty() -> Span {
-        Span {
-            start: u32::MAX,
-            end: u32::MAX,
-        }
-    }
-
-    pub fn exists(&self) -> bool {
-        self.start != u32::MAX && self.end != u32::MAX
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Located<T> {
@@ -159,12 +135,58 @@ pub enum Token<'a> {
     Error,
 }
 
+impl<'a> Token<'a> {
+    pub fn token_name(&self) -> String {
+        match self {
+            Token::Var(v) => format!("variable `{}`", v),
+            Token::Atom(a) => format!("atom `{}`", a),
+            Token::Num(n) => format!("number `{}`", n),
+            Token::Str(s) => format!("string `{}`", s),
+
+            Token::LAngle => "`<`".to_string(),
+            Token::RAngle => "`>`".to_string(),
+
+            Token::LPar => "`(`".to_string(),
+            Token::RPar => "`)`".to_string(),
+
+            Token::LCurl => "`{`".to_string(),
+            Token::RCurl => "`}`".to_string(),
+
+            Token::LBrac => "`[`".to_string(),
+            Token::RBrac => "`]`".to_string(),
+
+            Token::Pipe => "`|`".to_string(),
+
+            Token::Colon => "`:`".to_string(),
+            Token::Comma => "`,`".to_string(),
+            Token::Semi => "`;`".to_string(),
+
+            Token::Dot => "`.`".to_string(),
+            Token::Underscore => "`_`".to_string(),
+            Token::DotDot => "`..`".to_string(),
+            Token::Arrow => "`=>`".to_string(),
+            Token::Assn => "`:=`".to_string(),
+
+            Token::LitAssn => "`::=`".to_string(),
+            Token::Puts => "`puts`".to_string(),
+            Token::Case => "`case`".to_string(),
+            Token::Let => "`let`".to_string(),
+            Token::In => "`in`".to_string(),
+            Token::Fix => "`fix`".to_string(),
+
+            Token::Error => "error".to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
-pub struct LexerError;
+pub struct LexerError {
+    pub range: Span,
+}
 
 impl std::fmt::Display for LexerError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "LexerError")
+        write!(f, "LexerError({}..{})", self.range.start, self.range.end)
     }
 }
 
@@ -174,7 +196,12 @@ pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Token<'_>, usize, Le
     Token::lexer(source)
         .spanned()
         .map(move |(token, range)| match token {
-            Token::Error => Err(LexerError),
+            Token::Error => Err(LexerError {
+                range: Span {
+                    start: range.start as u32,
+                    end: range.end as u32,
+                },
+            }),
             token => Ok((range.start, token, range.end)),
         })
 }
