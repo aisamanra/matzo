@@ -72,10 +72,7 @@ impl Value {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(
-                    loc,
-                    format!("Expected closure, got {}", s),
-                ));
+                return Err(MatzoError::new(loc, format!("Expected closure, got {}", s)));
             }),
         }
     }
@@ -152,7 +149,7 @@ impl Thunk {
         match self {
             Thunk::Expr(_, _) => f("..."),
             Thunk::Value(v) => v.with_str(ast, f),
-            Thunk::Builtin(b) => f(&format!("#<builtin {}", b.name))
+            Thunk::Builtin(b) => f(&format!("#<builtin {}", b.name)),
         }
     }
 }
@@ -302,7 +299,10 @@ impl State {
     /// Evaluate this string as a standalone program, writing the
     /// results to the provided writer.
     pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
-        let file = self.file_table.borrow_mut().add_file("???".to_owned(), src.to_string());
+        let file = self
+            .file_table
+            .borrow_mut()
+            .add_file("???".to_owned(), src.to_string());
         if let Err(mtz) = self.run_file(src, file, w) {
             bail!("{}", self.print_error(mtz));
         }
@@ -723,10 +723,7 @@ impl State {
             }
             buf.push(']');
         } else {
-            scruts[0].with_str(
-                &self.ast.borrow(),
-                |s| buf.push_str(s),
-            );
+            scruts[0].with_str(&self.ast.borrow(), |s| buf.push_str(s));
         }
         Err(MatzoError::new(
             closure.func.loc,

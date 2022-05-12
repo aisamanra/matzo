@@ -52,9 +52,13 @@ impl MatzoError {
         err: lalrpop_util::ParseError<usize, lexer::Token, lexer::LexerError>,
     ) -> Self {
         match err {
-            lalrpop_util::ParseError::User { error } => {
-                MatzoError::new(Loc { span: error.range, file }, "Unrecognized token".to_string())
-            }
+            lalrpop_util::ParseError::User { error } => MatzoError::new(
+                Loc {
+                    span: error.range,
+                    file,
+                },
+                "Unrecognized token".to_string(),
+            ),
             lalrpop_util::ParseError::UnrecognizedToken {
                 token: (start, tok, end),
                 expected,
@@ -91,7 +95,10 @@ impl MatzoError {
                     start: start as u32,
                     end: end as u32,
                 };
-                MatzoError::new(Loc { span, file }, format!("Extra token {}", tok.token_name()))
+                MatzoError::new(
+                    Loc { span, file },
+                    format!("Extra token {}", tok.token_name()),
+                )
             }
         }
     }

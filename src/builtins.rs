@@ -209,10 +209,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let tup = val.as_tup(&state.ast.borrow(), expr.loc)?;
                         let mut contents = Vec::new();
                         for elem in tup {
-                            for th in state
-                                .hnf(elem)?
-                                .as_tup(&state.ast.borrow(), expr.loc)?
-                            {
+                            for th in state.hnf(elem)?.as_tup(&state.ast.borrow(), expr.loc)? {
                                 contents.push(th.clone());
                             }
                         }

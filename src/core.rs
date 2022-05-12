@@ -96,7 +96,6 @@ impl FileTable {
         }
         result
     }
-
 }
 
 impl Span {

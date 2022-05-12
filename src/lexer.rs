@@ -9,7 +9,10 @@ pub struct Located<T> {
 
 impl<T> Located<T> {
     pub fn new(item: T, file: FileRef, span: Span) -> Located<T> {
-        Located { loc: Loc { file, span} , item }
+        Located {
+            loc: Loc { file, span },
+            item,
+        }
     }
 }
 
