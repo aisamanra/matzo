@@ -5,7 +5,6 @@ pub type StrRef = string_interner::DefaultSymbol;
 pub type Name = Located<StrRef>;
 
 pub struct ASTArena {
-    files: Vec<String>,
     strings: string_interner::StringInterner,
     exprs: Vec<Expr>,
 }
@@ -19,7 +18,6 @@ impl Default for ASTArena {
 impl ASTArena {
     pub fn new() -> ASTArena {
         ASTArena {
-            files: Vec::new(),
             strings: string_interner::StringInterner::new(),
             exprs: vec![Expr::Nil],
         }
@@ -69,51 +67,6 @@ impl ASTArena {
                 writeln!(f, "]")
             }
         }
-    }
-
-    pub fn add_file(&mut self, file: String) -> FileRef {
-        let idx = self.files.len();
-        self.files.push(file);
-        FileRef { idx }
-    }
-
-    pub fn get_file(&self, file: FileRef) -> &str {
-        &self.files[file.idx]
-    }
-
-    pub fn get_line(&self, file: FileRef, span: Span) -> String {
-        if !span.exists() {
-            return String::new();
-        }
-
-        let mut line_number = 1;
-        let mut start_of_line = 0;
-        let mut end_of_line = None;
-        let src = &self.files[file.idx];
-
-        for (i, ch) in src.char_indices() {
-            if ch == '\n' {
-                if i < span.start as usize {
-                    line_number += 1;
-                    start_of_line = i + 1;
-                }
-                if i >= span.end as usize && end_of_line.is_none() {
-                    end_of_line = Some(i);
-                }
-            }
-        }
-        let end_of_line = end_of_line.unwrap_or(src.len());
-
-        let mut result = format!("{:3} |", line_number);
-        result.push_str(&src[start_of_line..end_of_line]);
-        result.push_str("\n     ");
-        for _ in start_of_line..(span.start as usize) {
-            result.push(' ');
-        }
-        for _ in span.start..span.end {
-            result.push('^');
-        }
-        result
     }
 
     fn indent(&self, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {

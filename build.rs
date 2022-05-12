@@ -43,7 +43,7 @@ fn test_%PREFIX%() {
   let state = crate::interp::State::new();
   let source = include_str!(\"%ROOT%/tests/%PREFIX%.matzo\");
   let lexer = lexer::tokens(source);
-  let file = state.get_ast().borrow_mut().add_file(source.to_string());
+  let file = state.file_table.borrow_mut().add_file(\"input\".to_string(), source.to_string());
   let stmts = grammar::StmtsParser::new().parse(&mut state.get_ast().borrow_mut(), file, lexer);
   assert!(stmts.is_ok());
   let stmts = stmts.unwrap();

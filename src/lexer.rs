@@ -1,16 +1,15 @@
-pub use crate::core::{FileRef, Span};
+pub use crate::core::{FileRef, Loc, Span};
 use logos::{Lexer, Logos};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Located<T> {
     pub item: T,
-    pub span: Span,
-    pub file: FileRef,
+    pub loc: Loc,
 }
 
 impl<T> Located<T> {
     pub fn new(item: T, file: FileRef, span: Span) -> Located<T> {
-        Located { span, file, item }
+        Located { loc: Loc { file, span} , item }
     }
 }
 
@@ -18,8 +17,7 @@ impl<T: Clone> Located<T> {
     pub fn map<R>(&self, func: impl FnOnce(T) -> R) -> Located<R> {
         Located {
             item: func(self.item.clone()),
-            span: self.span,
-            file: self.file,
+            loc: self.loc,
         }
     }
 }
