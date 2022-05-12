@@ -39,10 +39,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 f
             };
 
+            let mut files = matzo::core::FileTable::new();
             let mut ast = matzo::ast::ASTArena::new();
             let src = std::fs::read_to_string(&exp)?;
             let tokens = lexer::tokens(&src);
-            let file = ast.add_file(src.to_string());
+            let file = files.add_file(fname.to_string(), src.to_string());
             if let Ok(stmts) = grammar::StmtsParser::new().parse(&mut ast, file, tokens) {
                 let mut f = std::fs::File::create(exp_filename("parsed"))?;
                 for stmt in stmts {

@@ -1,6 +1,6 @@
 use crate::ast::*;
+use crate::core::{FileTable, Loc};
 use crate::errors::MatzoError;
-use crate::lexer::Span;
 use crate::rand::*;
 
 use anyhow::{bail, Error};
@@ -38,44 +38,41 @@ impl Value {
 
 impl Value {
     /// Convert this value to a Rust integer, failing otherwise
-    pub fn as_num(&self, ast: &ASTArena, span: Span) -> Result<i64, MatzoError> {
+    pub fn as_num(&self, ast: &ASTArena, loc: Loc) -> Result<i64, MatzoError> {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(span, format!("Expected number, got {}", s)));
+                return Err(MatzoError::new(loc, format!("Expected number, got {}", s)));
             }),
         }
     }
 
     /// Convert this value to a Rust string, failing otherwise
-    pub fn as_str(&self, ast: &ASTArena, span: Span) -> Result<&str, MatzoError> {
+    pub fn as_str(&self, ast: &ASTArena, loc: Loc) -> Result<&str, MatzoError> {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(span, format!("Expected string, got {}", s)));
+                return Err(MatzoError::new(loc, format!("Expected string, got {}", s)));
             }),
         }
     }
 
     /// Convert this value to a Rust slice, failing otherwise
-    pub fn as_tup(&self, ast: &ASTArena, span: Span) -> Result<&[Thunk], MatzoError> {
+    pub fn as_tup(&self, ast: &ASTArena, loc: Loc) -> Result<&[Thunk], MatzoError> {
         match self {
             Value::Tup(vals) => Ok(vals),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(span, format!("Expected tuple, got {}", s)));
+                return Err(MatzoError::new(loc, format!("Expected tuple, got {}", s)));
             }),
         }
     }
 
     /// Convert this value to a closure, failing otherwise
-    pub fn as_closure(&self, ast: &ASTArena, span: Span) -> Result<&Closure, MatzoError> {
+    pub fn as_closure(&self, ast: &ASTArena, loc: Loc) -> Result<&Closure, MatzoError> {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(
-                    span,
-                    format!("Expected closure, got {}", s),
-                ));
+                return Err(MatzoError::new(loc, format!("Expected closure, got {}", s)));
             }),
         }
     }
@@ -84,7 +81,7 @@ impl Value {
     /// this value. Note that this _will not force the value_ if it's
     /// not completely forced already: indeed, this can't, since it
     /// doesn't have access to the `State`. Unevaluated fragments of
-    /// the value will be printed as `#<unevaluated>`.
+    /// the value will be printed as `...`.
     pub fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
         match self {
             Value::Nil => f(""),
@@ -100,7 +97,7 @@ impl Value {
                     }
                     match val {
                         Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
-                        Thunk::Expr(..) => buf.push_str("#<unevaluated>"),
+                        Thunk::Expr(..) => buf.push_str("..."),
                         Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.idx)),
                     }
                 }
@@ -147,6 +144,16 @@ pub enum Thunk {
     Builtin(BuiltinRef),
 }
 
+impl Thunk {
+    pub fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
+        match self {
+            Thunk::Expr(_, _) => f("..."),
+            Thunk::Value(v) => v.with_str(ast, f),
+            Thunk::Builtin(b) => f(&format!("#<builtin {}", b.name)),
+        }
+    }
+}
+
 /// An environment is either `None` (i.e. in the root scope) or `Some`
 /// of some reference-counted scope (since those scopes might be
 /// shared in several places, e.g. as pointers in thunks or closures).
@@ -184,6 +191,8 @@ pub struct State {
     /// The root scope of the program, which contains all the
     /// top-level definitions and builtins.
     root_scope: RefCell<HashMap<StrRef, Thunk>>,
+    /// The file table which contains the raw sources
+    pub file_table: RefCell<FileTable>,
     /// The set of builtin (i.e. implemented-in-Rust) functions
     builtins: Vec<BuiltinFunc>,
     /// The thread-local RNG.
@@ -206,6 +215,7 @@ impl State {
     fn new_with_rand(rand: Box<dyn MatzoRand>) -> State {
         let mut s = State {
             root_scope: RefCell::new(HashMap::new()),
+            file_table: RefCell::new(FileTable::new()),
             rand: RefCell::new(rand),
             parser: crate::grammar::StmtsParser::new(),
             expr_parser: crate::grammar::ExprRefParser::new(),
@@ -259,7 +269,7 @@ impl State {
         } else {
             match self.root_scope.borrow().get(&name.item) {
                 None => Err(MatzoError::new(
-                    name.span,
+                    name.loc,
                     format!("Undefined name {}", &self.ast.borrow()[name.item]),
                 )),
                 Some(ne) => Ok(ne.clone()),
@@ -273,15 +283,15 @@ impl State {
         self.run_with_writer(src, &mut io::stdout())
     }
 
-    fn print_error(&self, file: FileRef, mtz: MatzoError) -> String {
+    fn print_error(&self, mtz: MatzoError) -> String {
         let mut buf = String::new();
         buf.push_str(&mtz.message);
         buf.push('\n');
-        buf.push_str(&self.ast.borrow().get_line(file, mtz.span));
+        buf.push_str(&self.file_table.borrow().get_line(mtz.loc));
         for ctx in mtz.context {
             buf.push('\n');
             buf.push_str(&ctx.message);
-            buf.push_str(&self.ast.borrow().get_line(file, ctx.span));
+            buf.push_str(&self.file_table.borrow().get_line(ctx.loc));
         }
         buf
     }
@@ -289,9 +299,12 @@ impl State {
     /// Evaluate this string as a standalone program, writing the
     /// results to the provided writer.
     pub fn run_with_writer(&self, src: &str, w: &mut impl std::io::Write) -> Result<(), Error> {
-        let file = self.ast.borrow_mut().add_file(src.to_string());
+        let file = self
+            .file_table
+            .borrow_mut()
+            .add_file("???".to_owned(), src.to_string());
         if let Err(mtz) = self.run_file(src, file, w) {
-            bail!("{}", self.print_error(file, mtz));
+            bail!("{}", self.print_error(mtz));
         }
         Ok(())
     }
@@ -304,7 +317,7 @@ impl State {
     ) -> Result<(), MatzoError> {
         let lexed = crate::lexer::tokens(src);
         let stmts = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed);
-        let stmts = stmts.map_err(MatzoError::from_parse_error)?;
+        let stmts = stmts.map_err(|e| MatzoError::from_parse_error(file, e))?;
         for stmt in stmts {
             self.execute(&stmt, &mut w)?;
         }
@@ -313,7 +326,7 @@ impl State {
 
     fn repl_parse(&self, src: &str) -> Result<Vec<Stmt>, MatzoError> {
         let lexed = crate::lexer::tokens(src);
-        let file = self.ast.borrow_mut().add_file(src.to_string());
+        let file = self.file_table.borrow_mut().add_repl_line(src.to_string());
         let stmts = {
             let mut ast = self.ast.borrow_mut();
             self.parser.parse(&mut ast, file, lexed)
@@ -332,7 +345,7 @@ impl State {
                 if let Ok(expr) = expr {
                     Ok(vec![Stmt::Puts(expr)])
                 } else {
-                    Err(MatzoError::from_parse_error(err))
+                    Err(MatzoError::from_parse_error(file, err))
                 }
             }
         }
@@ -342,13 +355,11 @@ impl State {
     /// results to stdout. One way this differs from the standalone
     /// program is that it actually tries parsing twice: first it
     /// tries parsing the fragment normally, and then if that doesn't
-    /// work it tries adding a `puts` ahead of it: this is hacky, but
-    /// it allows the REPL to respond by printing values when someone
-    /// simply types an expression.
+    /// work it tries parsing it as an expression instead of a
+    /// statement and then printing the result.
     pub fn run_repl(&self, src: &str) -> Result<(), Error> {
-        let file = self.ast.borrow_mut().add_file(src.to_string());
         if let Err(mtz) = self.repl_main(src) {
-            bail!("{}", self.print_error(file, mtz));
+            bail!("{}", self.print_error(mtz));
         }
         Ok(())
     }
@@ -444,19 +455,14 @@ impl State {
                         Choice {
                             weight: None,
                             value: Located {
-                                file: s.file,
-                                span: s.span,
+                                loc: s.loc,
                                 item: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(str))),
                             },
                         }
                     })
                     .collect();
                 let choices = Located {
-                    file: choices.first().unwrap().value.file,
-                    span: Span {
-                        start: choices.first().unwrap().value.span.start,
-                        end: choices.last().unwrap().value.span.end,
-                    },
+                    loc: choices.first().unwrap().value.loc,
                     item: self.ast.borrow_mut().add_expr(Expr::Chc(choices)),
                 };
                 self.root_scope
@@ -555,8 +561,8 @@ impl State {
             Expr::Range(from, to) => {
                 let from = self
                     .eval(*from, env)?
-                    .as_num(&self.ast.borrow(), from.span)?;
-                let to = self.eval(*to, env)?.as_num(&self.ast.borrow(), to.span)?;
+                    .as_num(&self.ast.borrow(), from.loc)?;
+                let to = self.eval(*to, env)?.as_num(&self.ast.borrow(), to.loc)?;
                 Ok(Value::Lit(Literal::Num(
                     self.rand.borrow_mut().gen_range_i64(from, to + 1),
                 )))
@@ -583,7 +589,7 @@ impl State {
                     (builtin.callback)(self, vals, env)
                 }
                 _ => Err(MatzoError::new(
-                    expr_ref.span,
+                    expr_ref.loc,
                     "Trying to call a non-function".to_string(),
                 )),
             },
@@ -705,9 +711,23 @@ impl State {
         }
 
         // we couldn't find a matching pattern, so throw an error
+        let mut buf = String::new();
+        if scruts.len() != 1 {
+            let arena = self.ast.borrow();
+            buf.push('[');
+            for (i, scrut) in scruts.iter().enumerate() {
+                if i != 0 {
+                    buf.push_str(", ");
+                }
+                scrut.with_str(&arena, |s| buf.push_str(s));
+            }
+            buf.push(']');
+        } else {
+            scruts[0].with_str(&self.ast.borrow(), |s| buf.push_str(s));
+        }
         Err(MatzoError::new(
-            Span::empty(),
-            format!("No pattern matched {:?}", scruts),
+            closure.func.loc,
+            format!("No pattern matched {}", buf),
         ))
     }
 

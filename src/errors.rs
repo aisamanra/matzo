@@ -1,38 +1,30 @@
-use crate::core::Span;
+use crate::core::{FileRef, Loc, Span};
 use crate::lexer;
 
 #[derive(Debug)]
 pub struct MatzoError {
     pub message: String,
-    pub span: Span,
+    pub loc: Loc,
     pub context: Vec<ContextLine>,
 }
 
 #[derive(Debug)]
 pub struct ContextLine {
     pub message: String,
-    pub span: Span,
+    pub loc: Loc,
 }
 
 impl MatzoError {
-    pub fn new(span: Span, message: String) -> MatzoError {
+    pub fn new(loc: Loc, message: String) -> MatzoError {
         MatzoError {
             message,
-            span,
+            loc,
             context: Vec::new(),
         }
     }
 
-    pub fn no_loc(message: String) -> MatzoError {
-        MatzoError {
-            message,
-            span: Span::empty(),
-            context: Vec::new(),
-        }
-    }
-
-    pub fn reposition(mut self, span: Span) -> MatzoError {
-        self.span = span;
+    pub fn reposition(mut self, loc: Loc) -> MatzoError {
+        self.loc = loc;
         self
     }
 
@@ -56,12 +48,17 @@ impl MatzoError {
     }
 
     pub fn from_parse_error(
+        file: FileRef,
         err: lalrpop_util::ParseError<usize, lexer::Token, lexer::LexerError>,
     ) -> Self {
         match err {
-            lalrpop_util::ParseError::User { error } => {
-                MatzoError::new(error.range, "Unrecognized token".to_string())
-            }
+            lalrpop_util::ParseError::User { error } => MatzoError::new(
+                Loc {
+                    span: error.range,
+                    file,
+                },
+                "Unrecognized token".to_string(),
+            ),
             lalrpop_util::ParseError::UnrecognizedToken {
                 token: (start, tok, end),
                 expected,
@@ -73,7 +70,7 @@ impl MatzoError {
 
                 let expected = MatzoError::format_expected_list(expected);
                 MatzoError::new(
-                    span,
+                    Loc { span, file },
                     format!("Unexpected {}. Expected {}", tok.token_name(), expected),
                 )
             }
@@ -84,7 +81,7 @@ impl MatzoError {
                 };
                 let expected = MatzoError::format_expected_list(expected);
                 MatzoError::new(
-                    span,
+                    Loc { span, file },
                     format!("Unexpected end-of-file; expected {}", expected),
                 )
             }
@@ -98,7 +95,10 @@ impl MatzoError {
                     start: start as u32,
                     end: end as u32,
                 };
-                MatzoError::new(span, format!("Extra token {}", tok.token_name()))
+                MatzoError::new(
+                    Loc { span, file },
+                    format!("Extra token {}", tok.token_name()),
+                )
             }
         }
     }
