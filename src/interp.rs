@@ -1,7 +1,10 @@
 use crate::ast::*;
-use crate::core::{FileTable, Loc};
+use crate::builtins::builtins;
+use crate::core::FileTable;
 use crate::errors::MatzoError;
 use crate::rand::*;
+pub use crate::value::*;
+use crate::{grammar, lexer};
 
 use anyhow::{bail, Error};
 use std::cell::RefCell;
@@ -10,106 +13,10 @@ use std::fmt;
 use std::io;
 use std::rc::Rc;
 
-/// A `Value` is a representation of the result of evaluation. Note
-/// that a `Value` is a representation of something in _weak head
-/// normal form_: i.e. for compound expressions (right now just
-/// tuples) it might contain other values but it might contain
-/// unevaluated expressions as well.
-#[derive(Debug, Clone)]
-pub enum Value {
-    Lit(Literal),
-    Tup(Vec<Thunk>),
-    Builtin(BuiltinRef),
-    Closure(Closure),
-    Nil,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct BuiltinRef {
-    name: &'static str,
-    idx: usize,
-}
-
-impl Value {
-    fn to_string(&self, ast: &ASTArena) -> String {
-        self.with_str(ast, |s| s.to_string())
-    }
-}
-
-impl Value {
-    /// Convert this value to a Rust integer, failing otherwise
-    pub fn as_num(&self, ast: &ASTArena, loc: Loc) -> Result<i64, MatzoError> {
-        match self {
-            Value::Lit(Literal::Num(n)) => Ok(*n),
-            _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected number, got {}", s)));
-            }),
-        }
-    }
-
-    /// Convert this value to a Rust string, failing otherwise
-    pub fn as_str(&self, ast: &ASTArena, loc: Loc) -> Result<&str, MatzoError> {
-        match self {
-            Value::Lit(Literal::Str(s)) => Ok(s),
-            _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected string, got {}", s)));
-            }),
-        }
-    }
-
-    /// Convert this value to a Rust slice, failing otherwise
-    pub fn as_tup(&self, ast: &ASTArena, loc: Loc) -> Result<&[Thunk], MatzoError> {
-        match self {
-            Value::Tup(vals) => Ok(vals),
-            _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected tuple, got {}", s)));
-            }),
-        }
-    }
-
-    /// Convert this value to a closure, failing otherwise
-    pub fn as_closure(&self, ast: &ASTArena, loc: Loc) -> Result<&Closure, MatzoError> {
-        match self {
-            Value::Closure(closure) => Ok(closure),
-            _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected closure, got {}", s)));
-            }),
-        }
-    }
-
-    /// Call the provided function with the string representation of
-    /// this value. Note that this _will not force the value_ if it's
-    /// not completely forced already: indeed, this can't, since it
-    /// doesn't have access to the `State`. Unevaluated fragments of
-    /// the value will be printed as `...`.
-    pub fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
-        match self {
-            Value::Nil => f(""),
-            Value::Lit(Literal::Str(s)) => f(s),
-            Value::Lit(Literal::Atom(s)) => f(&ast[s.item].to_string()),
-            Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
-            Value::Tup(values) => {
-                let mut buf = String::new();
-                buf.push('<');
-                for (i, val) in values.iter().enumerate() {
-                    if i > 0 {
-                        buf.push_str(", ");
-                    }
-                    match val {
-                        Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
-                        Thunk::Expr(..) => buf.push_str("..."),
-                        Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.idx)),
-                    }
-                }
-                buf.push('>');
-                f(&buf)
-            }
-            Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
-            Value::Closure(_) => f("#<lambda ...>"),
-        }
-    }
-}
-
+/// A `Callback` here is what we use for builtin functions: they take
+/// the state and the env along with a (non-empty) list of
+/// arguments. (We don't even parse empty argument lists right now,
+/// although that's subject to change.)
 type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>>;
 
 /// A representation of a builtin function implemented in Rust. This
@@ -121,7 +28,8 @@ pub struct BuiltinFunc {
     /// and as the Matzo identifier used for this function.
     pub name: &'static str,
     /// The callback here is the Rust implementation of the function,
-    /// where the provided `ExprRef` is the argument to the function.
+    /// where the provided `&[ExprRef]` is the arguments to the
+    /// function. They should be unevaluated. (call by name, baybee)
     pub callback: Callback,
 }
 
@@ -131,59 +39,11 @@ impl fmt::Debug for BuiltinFunc {
     }
 }
 
-/// The name `Thunk` is a bit of a misnomer here: this is
-/// _potentially_ a `Thunk`, but represents anything that can be
-/// stored in a variable: it might be an unevaluated expression (along
-/// with the environment where it should be evaluated), or it might be
-/// a partially- or fully-forced value, or it might be a builtin
-/// function.
-#[derive(Debug, Clone)]
-pub enum Thunk {
-    Expr(ExprRef, Env),
-    Value(Value),
-    Builtin(BuiltinRef),
-}
-
-impl Thunk {
-    pub fn with_str<U>(&self, ast: &ASTArena, f: impl FnOnce(&str) -> U) -> U {
-        match self {
-            Thunk::Expr(_, _) => f("..."),
-            Thunk::Value(v) => v.with_str(ast, f),
-            Thunk::Builtin(b) => f(&format!("#<builtin {}", b.name)),
-        }
-    }
-}
-
-/// An environment is either `None` (i.e. in the root scope) or `Some`
-/// of some reference-counted scope (since those scopes might be
-/// shared in several places, e.g. as pointers in thunks or closures).
-pub type Env = Option<Rc<Scope>>;
-
-/// A `Scope` represents a _non-root_ scope (since the root scope is
-/// treated in a special way) and contains a map from variables to
-/// `Thunk`s, along with a parent pointer.
-#[derive(Debug)]
-pub struct Scope {
-    vars: HashMap<StrRef, Thunk>,
-    parent: Env,
-}
-
-/// A `Closure` is a pointer to the expression that represents a
-/// function implementation along with the scope in which it was
-/// defined.
-///
-/// IMPORTANT INVARIANT: the `func` here should be an `ExprRef` which
-/// references a `Func`. The reason we don't copy the `Func` in is
-/// because, well, that'd be copying, and we can bypass that, but we
-/// have to maintain that invariant explicitly, otherwise we'll panic.
-#[derive(Debug, Clone)]
-pub struct Closure {
-    func: ExprRef,
-    scope: Env,
-}
-
 /// A `State` contains all the interpreter state needed to run a
-/// `Matzo` program.
+/// `Matzo` program. Note that a bunch of these are separate `RefCell`
+/// things because that makes it easier to do some internal mutability
+/// (e.g. adding stuff to the `ASTArena` even when we don't have
+/// mutable state access.)
 pub struct State {
     /// An `ASTArena` that contains all the packed information that
     /// results from parsing a program.
@@ -198,9 +58,9 @@ pub struct State {
     /// The thread-local RNG.
     rand: RefCell<Box<dyn MatzoRand>>,
     /// The instantiated parser used to parse Matzo programs
-    parser: crate::grammar::StmtsParser,
-    /// The instantiated parser used to parse Matzo programs
-    expr_parser: crate::grammar::ExprRefParser,
+    parser: grammar::StmtsParser,
+    /// The instantiated parser used to parse Matzo expressions
+    expr_parser: grammar::ExprRefParser,
 }
 
 impl Default for State {
@@ -217,12 +77,12 @@ impl State {
             root_scope: RefCell::new(HashMap::new()),
             file_table: RefCell::new(FileTable::new()),
             rand: RefCell::new(rand),
-            parser: crate::grammar::StmtsParser::new(),
-            expr_parser: crate::grammar::ExprRefParser::new(),
+            parser: grammar::StmtsParser::new(),
+            expr_parser: grammar::ExprRefParser::new(),
             ast: RefCell::new(ASTArena::new()),
             builtins: Vec::new(),
         };
-        for builtin in crate::builtins::builtins() {
+        for builtin in builtins() {
             let idx = s.builtins.len();
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope.borrow_mut().insert(
@@ -250,8 +110,7 @@ impl State {
     }
 
     /// Get the underlying AST. (This is mostly useful for testing
-    /// purposes, where we don't want to have a function do the
-    /// parsing and evaluating for us at the same time.)
+    /// purposes.)
     pub fn get_ast(&self) -> &RefCell<ASTArena> {
         &self.ast
     }
@@ -315,7 +174,7 @@ impl State {
         file: FileRef,
         mut w: &mut impl std::io::Write,
     ) -> Result<(), MatzoError> {
-        let lexed = crate::lexer::tokens(src);
+        let lexed = lexer::tokens(src);
         let stmts = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed);
         let stmts = stmts.map_err(|e| MatzoError::from_parse_error(file, e))?;
         for stmt in stmts {
@@ -325,7 +184,7 @@ impl State {
     }
 
     fn repl_parse(&self, src: &str) -> Result<Vec<Stmt>, MatzoError> {
-        let lexed = crate::lexer::tokens(src);
+        let lexed = lexer::tokens(src);
         let file = self.file_table.borrow_mut().add_repl_line(src.to_string());
         let stmts = {
             let mut ast = self.ast.borrow_mut();
@@ -337,7 +196,7 @@ impl State {
                 // this might have just been an expression instead, so
                 // try parsing a single expression to see if that
                 // works
-                let lexed = crate::lexer::tokens(src);
+                let lexed = lexer::tokens(src);
                 let expr = {
                     let mut ast = self.ast.borrow_mut();
                     self.expr_parser.parse(&mut ast, file, lexed)
@@ -390,13 +249,14 @@ impl State {
     }
 
     /// Execute this statement, writing any output to the provided
-    /// output writer. Right now, this will always start in root
-    /// scope: there are no statements within functions.
+    /// output writer. Right now, this will always run in the global
+    /// root scope: there are no statements within functions, so
+    /// statements are necessarily "top-level".
     pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), MatzoError> {
         match stmt {
-            // Evaluate the provided expression _all the way_
-            // (i.e. recurisvely, not to WHNF) and write its
-            // representation to the output.
+            // For a `puts`, we want to evaluate the provided
+            // expression _all the way_ (i.e. recursively, not just to
+            // WHNF) and write its representation to the output.
             Stmt::Puts(expr) => {
                 let val = self.eval(*expr, &None)?;
                 let val = self.force(val)?;
@@ -405,7 +265,9 @@ impl State {
 
             // Look up the provided name, and if it's not already
             // forced completely, then force it completely and
-            // re-insert this name with the forced version.
+            // re-insert this name with the forced version. (I don't
+            // love this feature but it was in the original
+            // implementation.)
             Stmt::Fix(name) => {
                 let val = match self.lookup(&None, *name)? {
                     Thunk::Expr(e, env) => self.eval(e, &env)?,
@@ -473,7 +335,8 @@ impl State {
         Ok(())
     }
 
-    /// Given a value, force it recursively.
+    /// Given a value, force it recursively (i.e. all the way to head
+    /// normal form.) This really only affects tuples recursively.
     fn force(&self, val: Value) -> Result<Value, MatzoError> {
         match val {
             Value::Tup(values) => Ok(Value::Tup(
@@ -490,10 +353,13 @@ impl State {
         }
     }
 
-    /// Given a thunk, force it to WHNF.
+    /// Given a thunk, force it to WHNF: i.e. evaluate the outermost
+    /// layer but not recursively.
     pub fn hnf(&self, thunk: &Thunk) -> Result<Value, MatzoError> {
         match thunk {
             Thunk::Expr(expr, env) => self.eval(*expr, env),
+            // note: if this ever needs to be efficient, this would be
+            // a great place to add a proper GC.
             Thunk::Value(val) => Ok(val.clone()),
             Thunk::Builtin(b) => Ok(Value::Builtin(*b)),
         }
@@ -613,6 +479,12 @@ impl State {
                 self.eval(*body, &Some(new_scope))
             }
 
+            // For a `case`, we actually kind of cheat: we treat it
+            // like we're creating and immediately applying a
+            // function. A `case` also only takes one argument, while
+            // a function takes more than one, so this is 'punning' in
+            // a kind of gross way, but... it works and it doesn't
+            // repeat code, so, uh, yay, I guess?
             Expr::Case(scrut, _) => {
                 let closure = Closure {
                     func: expr_ref,
@@ -645,8 +517,8 @@ impl State {
     ///
     /// It should be impossible to get `"2"` in this case. That means
     /// that we need to force the argument _and keep branching against
-    /// the forced argument_. But we also want the following to still
-    /// contain non-determinism:
+    /// the already-forced argument_. But we also want the following
+    /// to still contain non-determinism:
     ///
     /// ```ignore
     /// {[<Foo, x>] => x x "!"; [<Bar, x>] => x x "?"}[<Foo | Bar, "a" | "b">]
