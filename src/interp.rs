@@ -6,7 +6,7 @@ use crate::rand::*;
 use anyhow::{bail, Error};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::io;
 use std::rc::Rc;
 
@@ -98,7 +98,7 @@ impl Value {
                     match val {
                         Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
                         Thunk::Expr(..) => buf.push_str("..."),
-                        Thunk::Builtin(func) => buf.push_str(&format!("#<builtin {}>", func.idx)),
+                        Thunk::Builtin(func) => write!(buf, "#<builtin {}>", func.idx).unwrap(),
                     }
                 }
                 buf.push('>');

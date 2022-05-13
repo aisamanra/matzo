@@ -135,7 +135,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         } else {
                             buf.push_str(s.trim());
                         }
-                        if buf.len() > 0 {
+                        if !buf.is_empty() {
                             last_char = buf.chars().last().unwrap();
                         }
                     }
