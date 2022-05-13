@@ -2,8 +2,8 @@ use crate::ast::*;
 use crate::core::Loc;
 use crate::errors::MatzoError;
 
-use std::fmt::Write;
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::rc::Rc;
 
 /// A `Value` is a representation of the result of evaluation. Note
@@ -105,7 +105,6 @@ pub struct BuiltinRef {
     pub idx: usize,
 }
 
-
 /// The name `Thunk` is a bit of a misnomer here: this is
 /// _potentially_ a `Thunk`, but represents anything that can be
 /// stored in a variable: it might be an unevaluated expression (along
@@ -128,7 +127,6 @@ impl Thunk {
         }
     }
 }
-
 
 /// An environment is either `None` (i.e. in the root scope) or `Some`
 /// of some reference-counted scope (since those scopes might be

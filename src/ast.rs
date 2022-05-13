@@ -11,7 +11,6 @@ pub type StrRef = string_interner::DefaultSymbol;
 /// e.g. error-printing purposes
 pub type Name = Located<StrRef>;
 
-
 /// A top-level Matzo statement.
 #[derive(Debug, Clone)]
 pub enum Stmt {

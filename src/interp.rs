@@ -2,9 +2,9 @@ use crate::ast::*;
 use crate::builtins::builtins;
 use crate::core::FileTable;
 use crate::errors::MatzoError;
-use crate::{grammar,lexer};
 use crate::rand::*;
 pub use crate::value::*;
+use crate::{grammar, lexer};
 
 use anyhow::{bail, Error};
 use std::cell::RefCell;
