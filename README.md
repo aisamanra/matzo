@@ -5,8 +5,10 @@ consonant ::= p t k w h n;
 vowel := "a" | "e" | "i" | "o" | "u";
 nucleus := 4: vowel | vowel "'";
 syll := 4: consonant nucleus | nucleus;
-puts syll rep[1..5, syll];
+puts rep[2..5, syll];
 ```
+
+Matzo is still very immature, and it's likely that bugs are lurking very prominently. Please [feel free to report them](https://github.com/aisamanra/matzo/issues) if you come across any problems!
 
 ## Building and Running Matzo
 
@@ -15,8 +17,6 @@ Matzo is implemented in Rust, so if you've got a Rust toolchain installed, you s
 ```
 cargo install --git https://github.com/aisamanra/matzo.git
 ```
-
-Matzo is still very immature, and it's likely that bugs are lurking very prominently.
 
 ## The Matzo language
 
