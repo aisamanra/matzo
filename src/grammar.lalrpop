@@ -1,0 +1,188 @@
+use crate::ast::*;
+use crate::lexer::*;
+
+grammar<'input>(ast: &mut ASTArena, file: FileRef);
+
+extern {
+    type Location = usize;
+    type Error = LexerError;
+
+    enum Token<'input> {
+        "<" => Token::LAngle,
+        ">" => Token::RAngle,
+        "(" => Token::LPar,
+        ")" => Token::RPar,
+        "{" => Token::LCurl,
+        "}" => Token::RCurl,
+        "[" => Token::LBrac,
+        "]" => Token::RBrac,
+        "|" => Token::Pipe,
+        ":" => Token::Colon,
+        "," => Token::Comma,
+        ";" => Token::Semi,
+        "." => Token::Dot,
+        "_" => Token::Underscore,
+        ".." => Token::DotDot,
+        "=>" => Token::Arrow,
+        ":=" => Token::Assn,
+        "::=" => Token::LitAssn,
+        "puts" => Token::Puts,
+        "case" => Token::Case,
+        "let" => Token::Let,
+        "in" => Token::In,
+        "fix" => Token::Fix,
+        "var" => Token::Var(<&'input str>),
+        "atom" => Token::Atom(<&'input str>),
+        "num" => Token::Num(<i64>),
+        "str" => Token::Str(<String>)
+    }
+}
+
+pub Stmts: Vec<Stmt> = {
+    <mut stmts:(<Stmt> ";")*> <stmt:Stmt?> => match stmt {
+        None => stmts,
+        Some(stmt) => {
+            stmts.push(stmt);
+            stmts
+        }
+    },
+};
+
+pub Stmt: Stmt = {
+    "puts" <Located<Expr>> => Stmt::Puts(<>),
+    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> => Stmt::Assn(fixed.is_some(), name, expr),
+    <fixed:"fix"?> <name:Name> "::=" <strs:(<Located<AtomLit>>)*> =>
+        Stmt::LitAssn(
+            fixed.is_some(),
+            name,
+            strs,
+        ),
+    "fix" <Name> => Stmt::Fix(<>),
+};
+
+pub AtomLit: string_interner::DefaultSymbol = {
+    "var" => ast.add_string(<>),
+    "atom" => ast.add_string(<>),
+};
+
+pub Name: Name = {
+    <start: @L> <str:"var"> <end: @R> =>
+        Located::new(ast.add_string(str), file, Span { start: start as u32, end: end as u32 }),
+};
+
+pub ExprRef = Located<Expr>;
+
+pub Expr: ExprId = {
+    <mut ts:(<Choice> "|")*> <t:Choice> => {
+        if ts.len() == 0 {
+            t.value.item
+        } else {
+            ts.push(t);
+            ast.add_expr(Expr::Chc(ts))
+        }
+    }
+};
+
+pub Choice: Choice = {
+    <weight:"num"> ":" <value:Located<Term>> => Choice {
+        weight: Some(weight),
+        value
+    },
+    <value:Located<Term>> => Choice {
+        weight: None,
+        value
+    }
+};
+
+pub Term: ExprId = {
+    <mut bs:(<Located<Branch>>)*> => {
+        match bs.len() {
+            0 => ast.expr_nil(),
+            1 => bs.pop().unwrap().item,
+            _ => ast.add_expr(Expr::Cat(<>)),
+        }
+    }
+};
+
+pub Branch: ExprId = {
+//    <l:Located<Branch>> "." <r:Located<Subbranch>> => ast.add_expr(Expr::Ap(l, r)),
+    <l:Located<Branch>> "[" <mut rs:Located<(<Expr> ",")>*> <r:Located<Expr>> "]" => {
+        rs.push(r);
+        ast.add_expr(Expr::Ap(l, rs))
+    },
+    <Subbranch> => <>,
+};
+
+pub Subbranch: ExprId = {
+    <l:Located<Subbranch>> ".." <r:Located<Leaf>> => ast.add_expr(Expr::Range(l, r)),
+    <Leaf> => <>,
+}
+
+pub Leaf: ExprId = {
+    <Literal> => ast.add_expr(Expr::Lit(<>)),
+    <Name> => ast.add_expr(Expr::Var(<>)),
+    "<" <mut es:(<Located<Expr>> ",")*> <e:Located<Expr>> ">" => {
+        if es.len() == 0 && e.item.nil() {
+            ast.add_expr(Expr::Tup(Vec::new()))
+        } else {
+            es.push(e);
+            ast.add_expr(Expr::Tup(es))
+        }
+    },
+    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Located<Expr>> "in" "{" <e2:Located<Expr>> "}" =>
+        ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
+    "{" <cs:FunCases> "}" =>
+        ast.add_expr(Expr::Fun(cs)),
+    "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
+        ast.add_expr(Expr::Case(e, cs)),
+    "(" <e:Expr> ")" => e,
+};
+
+pub Cases: Vec<Case> = {
+  <mut cs:(<Case> ";")*> <c:Case> => {
+    cs.push(c);
+    cs
+  }
+};
+
+pub Case: Case = {
+  <pat:Pat> "=>" <expr:Located<Expr>> =>
+    Case { pats: vec![pat], expr }
+};
+
+pub FunCases: Vec<Case> = {
+    <mut cs:(<FunCase> ";")*> <c:FunCase> => {
+        cs.push(c);
+        cs
+    }
+};
+
+pub FunCase: Case = {
+    "[" <mut pats:(<Pat> ",")*> <pat:Pat> "]" "=>" <expr:Located<Expr>> => {
+        pats.push(pat);
+        Case { pats, expr }
+    }
+};
+
+pub Pat: Pat = {
+    "_" => Pat::Wildcard,
+    <Literal> => Pat::Lit(<>),
+    <Name> => Pat::Var(<>),
+    "<" ">" => Pat::Tup(Vec::new()),
+    "<" <mut ps:(<Pat> ",")*> <p:Pat> ">" => {
+        ps.push(p);
+        Pat::Tup(ps)
+    },
+};
+
+pub Literal: Literal = {
+    "num" => Literal::Num(<>),
+    "str" => Literal::Str(<>),
+    <atom:Located<"atom">> => Literal::Atom(atom.map(|x| ast.add_string(x))),
+};
+
+#[inline]
+Located<T>: Located<T> = {
+    <start: @L> <data: T> <end: @R> =>
+        Located::new(data, file, Span { start: start as u32, end: end as u32 }),
+};

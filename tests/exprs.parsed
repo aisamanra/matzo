@@ -1,0 +1,74 @@
+Puts Cat(
+  Lit(Atom(This))
+  Lit(Atom(That))
+  Lit(Atom(The-Other))
+)
+
+Puts Chc(
+  Lit(Atom(This))
+  Lit(Atom(That))
+  Lit(Atom(The-Other))
+)
+
+Puts Chc(
+  5:
+    Lit(Atom(This))
+  Lit(Atom(That))
+)
+
+Puts Ap(
+  Ap(
+    Var(foo)
+    Var(bar)
+  )
+  Var(baz)
+)
+
+Puts Tup(
+)
+
+Puts Tup(
+  Num(1)
+)
+
+Puts Tup(
+  Num(1)
+  Num(2)
+)
+
+Puts Tup(
+  Num(1)
+  Num(2)
+  Num(3)
+)
+
+Puts Range(
+  Num(0)
+  Num(20)
+)
+
+Puts Range(
+  Var(x)
+  Var(y)
+)
+
+Puts Ap(
+  Var(f)
+  Var(x)
+)
+
+Puts Fun(
+  x, 
+ =>
+    Var(x)
+)
+
+Puts Fun(
+  True, 
+ =>
+    Str("yes")
+  False, 
+ =>
+    Str("no")
+)
+

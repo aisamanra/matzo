@@ -1,0 +1,8 @@
+Assn  x Num(5)
+
+Assn  y Lit(Atom(This))
+
+LitAssn  a, [  a  b  c  d ]
+
+LitAssn  fóo, [  á  þ  ç  đ ]
+

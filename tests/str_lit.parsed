@@ -1,0 +1,25 @@
+Puts Cat(
+  Str("foo")
+  Str("foo")
+)
+
+Puts Cat(
+  Str("foo bar baz")
+  Str("foo bar baz")
+)
+
+Puts Cat(
+  Str("won't you")
+  Str("quoth the raven \"nevermore\"")
+)
+
+Puts Cat(
+  Str("this\nthat")
+  Str("one\ntwo")
+)
+
+Puts Cat(
+  Str("\n\t\r")
+  Str("\n\t\r")
+)
+
