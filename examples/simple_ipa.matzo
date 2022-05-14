@@ -5,6 +5,8 @@ vowel ::= a i u;
 rime := 4: <vowel> | <vowel, "ʔ">;
 syll := tuple/concat[<<cons>, rime>];
 
+word := tuple/concat[tuple/rep[2..4, syll]];
+
 orthography := {
   ["ʃ"] => "sh";
   ["ŋ"] => "ng";
@@ -12,8 +14,6 @@ orthography := {
   ["ʔ"] => "'";
   [ch]  => ch
 };
-
-word := tuple/concat[tuple/rep[2..4, syll]];
 
 fix word;
 
