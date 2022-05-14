@@ -12,5 +12,5 @@ fix name := "Arjun" | "Yuuma" | "Darcy" | "Mia" | "Chiaki" | "Izzi" | "Azra" | "
 fix pet ::= unicorn raven sparrow scorpion coyote eagle owl lizard zebra duck kitten;
 mood ::= vexed indignant impassioned wistful astute corteous;
 
-puts name " traveled with her pet " pet ". "
-     name " was never " mood " for the " pet " was always too " mood ".";
+puts se[name, "traveled with her pet", pet, "."];
+puts se[name, "was never", mood, "for the", pet, "was always too", mood, "."];

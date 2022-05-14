@@ -1,8 +1,0 @@
-word := start (rep[1..4, syll]) end;
-syll := vowel cons;
-start := 3: cons | 2: '';
-end := 3: vowel | vowel 's'| vowel 'n';
-cons ::= p b m m f v t t t d n n s s s z l k g g gg sh j l r th th th;
-vowel ::= a a e e i i i o u eu au ae ai oi;
-
-puts word;
