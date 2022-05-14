@@ -221,6 +221,42 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             ),
         },
         BuiltinFunc {
+            name: "tuple/join",
+            callback: Box::new(
+                |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
+                    if exprs.is_empty() || exprs.len() > 2 {
+                        return arity_error("tuple/index", 1, exprs);
+                    }
+
+                    let joiner = if let Some(join_e) = exprs.get(1) {
+                        state
+                            .eval(*join_e, env)?
+                            .as_str(&state.ast.borrow(), join_e.loc)?
+                            .to_string()
+                    } else {
+                        String::new()
+                    };
+
+                    let tup_e = exprs[0];
+                    let tup = state.eval(tup_e, env)?;
+
+                    let mut buf = String::new();
+                    for (idx, elem) in tup
+                        .as_tup(&state.ast.borrow(), tup_e.loc)?
+                        .iter()
+                        .enumerate()
+                    {
+                        if idx > 0 {
+                            buf.push_str(&joiner);
+                        }
+                        let elem = state.hnf(elem)?;
+                        buf.push_str(elem.as_str(&state.ast.borrow(), tup_e.loc)?);
+                    }
+                    Ok(Value::Lit(Literal::Str(buf)))
+                },
+            ),
+        },
+        BuiltinFunc {
             name: "tuple/index",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
@@ -233,6 +269,25 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         )
                     } else {
                         arity_error("tuple/index", 1, exprs)
+                    }
+                },
+            ),
+        },
+        BuiltinFunc {
+            name: "tuple/rep",
+            callback: Box::new(
+                |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
+                    if let [rep, expr] = exprs {
+                        let mut tup = Vec::new();
+                        let num = state
+                            .eval(*rep, env)?
+                            .as_num(&state.ast.borrow(), rep.loc)?;
+                        for _ in 0..num {
+                            tup.push(Thunk::Expr(*expr, env.clone()));
+                        }
+                        Ok(Value::Tup(tup))
+                    } else {
+                        arity_error("rep", 2, exprs)
                     }
                 },
             ),

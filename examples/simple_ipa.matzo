@@ -1,0 +1,22 @@
+cons := "p" | "t" | "k"
+      | "m" | "n" | "ŋ"
+      | "s" | "ʃ" | "ɾ";
+vowel ::= a i u;
+rime := 4: <vowel> | <vowel, "ʔ">;
+syll := tuple/concat[<<cons>, rime>];
+
+orthography := {
+  ["ʃ"] => "sh";
+  ["ŋ"] => "ng";
+  ["ɾ"] => "r";
+  ["ʔ"] => "'";
+  [ch]  => ch
+};
+
+word := tuple/concat[tuple/rep[2..4, syll]];
+
+fix word;
+
+ortho := tuple/join[tuple/map[orthography, word]];
+ipa := tuple/join[word];
+puts ortho " (pronounced /ˈ" ipa "/)";

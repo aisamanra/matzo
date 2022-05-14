@@ -1,6 +1,22 @@
-**Matzo** was my first attempt at a language designed for creating random text fragments, now reimplemented in Rust.
+**Matzo** is a little dynamically typed language intended for creating fragments of random text. Matzo programs nondeterministically produce strings as output.
 
-(The earlier versions were Haskell and JavaScript, and both have bit-rotted rather badly: I'm hoping that this version is both cleaner—on account of my writing it a decade later—and also that this version is easier to modify and will be more resilient to bit-rot.)
+```
+consonant ::= p t k w h n;
+vowel := "a" | "e" | "i" | "o" | "u";
+nucleus := 4: vowel | vowel "'";
+syll := 4: consonant nucleus | nucleus;
+puts syll rep[1..5, syll];
+```
+
+## Building and Running Matzo
+
+Matzo is implemented in Rust, so if you've got a Rust toolchain installed, you should be able to install it with
+
+```
+cargo install --git https://github.com/aisamanra/matzo.git
+```
+
+Matzo is still very immature, and it's likely that bugs are lurking very prominently.
 
 ## The Matzo language
 
@@ -67,7 +83,7 @@ fix letter ::= a b;
 puts letter letter;
 ```
 
-The other is to use `fix` as a standalone statement, which modifies a definition in-scope by fixing it.
+The other way is to use `fix` as a standalone statement, which modifies a definition in-scope by fixing it.
 
 ```
 letter ::= a b;
@@ -102,31 +118,29 @@ if := { [True,  x, _] => x
       };
 ```
 
-Functions can also be manually uncurried:
+It is a runtime error if no case matches.
 
 ```
-if := { [True]  => { [x] => { [_] => x }}
-      ; [False] => { [_] => { [y] => y }}
-      };
+>>> {[A] => 1; [B] => 2}[C]
+error: No pattern matched C
+  1 |{[A] => 1; [B] => 2}[C]
+     ^^^^^^^^^^^^^^^^^^^^
 ```
 
-While these two express the same functionality, the former would be called with `if[condition, thenCase, elseCase]` while the latter would be called with `if[condition][then-case][else-case]`.
+Matzo does not permit nullary (i.e. zero-argument) functions.
 
-### A sample program
+### Provided functions
 
-The intention of Matzo is to be used for generating text, and was originally created for the task of creating fake words for constructed languages. Here is an example program which creates words in a simple language:
+Matzo has a handful of functions which help writing certain kinds of programs. The standard library is not yet mature and it's likely that new functions will be added as time goes on, or the behavior of existing functions modified:
 
-```
-consonant ::= p t k w h n;
-vowel ::= a e i o u;
-nucleus := 4: vowel | vowel "'";
-syll := 4: consonant nucleus | nucleus;
-puts syll rep[1..5, syll];
-```
-
-## Implementation notes
-
-## Todo
-
-- [ ] Expand the stdlib
-- [ ] Think about how to express GC
+- `rep[num, expr]` produces the string created by `num` repetitions of `expr`. This function lazily evaluates `expr` each time it's needed, so call like `rep[2, "a" | "b"]` could produce either `aa`, `ab`, `ba`, or `bb`.
+- `wd[str...]` simply appends all its arguments together, e.g. `wd["a", "b"]` produces `ab`. This is almost always redundant but can make some code clearer.
+- `se[str...]` is a sentence creation helper: it attemps to intelligently put spaces between fragments while respecting punctuation and will also always capitalize the first word in the sentence. e.g. `se["a", "b", "c."]` ends up producing `A b c.`
+- `str/upper[str]`, `str/lower[str]`, and `str/capitalize[str]` will modify strings for their case. The two functions `str/upper` and `str/lower` convert their arguments fully to upper- and lower-case, respectively, while `str/capitalize` will attempt to turn its argument to title-case, e.g. `str/capitalize["foo bar"]` produces `Foo Bar`.
+- `add[x, y]`, `sub[x, y]`, and `mul[x, y]` peform the relevant arithmetic operations on integers.
+- `tuple/concat[tup]` takes a tuple of tuples and flattens it into a tuple, e.g. `tuple/concat[<<1>, <2>>]` produces `<1, 2>`.
+- `tuple/rep[num, expr]` creates a tuple by repeating `expr` `num` times. For example, `tuple/rep[2, X]` produces `<X, X>`. Like `rep`, this treats the second argument lazily.
+- `tuple/index[tup, num]` returns the nth element of `tup`, zero-indexed.
+- `tuple/replace[tup, num, new]` replaced the nth element of `tup` with `new`.
+- `tuple/len[tup]` returns the number of elements in the tuple `tup`.
+- `tuple/join[tup]` appends the elements of `tup` into a single string. This function takes an optional second argument, as well, so `tuple/join[tup, str]` appents the elements of `tup` separated by copies of `str` into a single string.
