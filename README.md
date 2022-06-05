@@ -139,6 +139,7 @@ Matzo has a handful of functions which help writing certain kinds of programs. T
 - `str/upper[str]`, `str/lower[str]`, and `str/capitalize[str]` will modify strings for their case. The two functions `str/upper` and `str/lower` convert their arguments fully to upper- and lower-case, respectively, while `str/capitalize` will attempt to turn its argument to title-case, e.g. `str/capitalize["foo bar"]` produces `Foo Bar`.
 - `add[x, y]`, `sub[x, y]`, and `mul[x, y]` peform the relevant arithmetic operations on integers.
 - `tuple/concat[tup]` takes a tuple of tuples and flattens it into a tuple, e.g. `tuple/concat[<<1>, <2>>]` produces `<1, 2>`.
+- `tuple/flatten[val...]` takes any number of arguments and produces a flat tuple, appending and concatenating as necessary: for example, `tuple/flatten[1, 2, 3]` and `tuple/flatten[<1, <2>>, <<<3>>>]` will both produce `<1, 2, 3>`. It should be noted that in order for this to work `tuple/flatten` will necessarily force its argument fully.
 - `tuple/rep[num, expr]` creates a tuple by repeating `expr` `num` times. For example, `tuple/rep[2, X]` produces `<X, X>`. Like `rep`, this treats the second argument lazily.
 - `tuple/index[tup, num]` returns the nth element of `tup`, zero-indexed.
 - `tuple/replace[tup, num, new]` replaced the nth element of `tup` with `new`.
