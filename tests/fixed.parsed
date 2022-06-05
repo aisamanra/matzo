@@ -1,6 +1,12 @@
-LitAssn fixed c, [  p  b ]
+Assn fixed c Chc(
+  Str("p")
+  Str("b")
+)
 
-LitAssn fixed v, [  a  u ]
+Assn fixed v Chc(
+  Str("a")
+  Str("u")
+)
 
 Puts Cat(
   Var(c)

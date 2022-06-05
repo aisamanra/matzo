@@ -50,19 +50,18 @@ pub Stmts: Vec<Stmt> = {
 
 pub Stmt: Stmt = {
     "puts" <Located<Expr>> => Stmt::Puts(<>),
-    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> => Stmt::Assn(fixed.is_some(), name, expr),
-    <fixed:"fix"?> <name:Name> "::=" <strs:(<Located<AtomLit>>)*> =>
-        Stmt::LitAssn(
-            fixed.is_some(),
-            name,
-            strs,
-        ),
+    <binding:Binding> => Stmt::Assn(binding),
     "fix" <Name> => Stmt::Fix(<>),
 };
 
 pub AtomLit: string_interner::DefaultSymbol = {
     "var" => ast.add_string(<>),
     "atom" => ast.add_string(<>),
+};
+
+pub BareString: String = {
+    "var" => <>.to_string(),
+    "atom" => <>.to_string(),
 };
 
 pub Name: Name = {
@@ -129,13 +128,51 @@ pub Leaf: ExprId = {
             ast.add_expr(Expr::Tup(es))
         }
     },
-    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Located<Expr>> "in" "{" <e2:Located<Expr>> "}" =>
-        ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
+    "let" <bindings:Bindings> "in" "{" <expr:Located<Expr>> "}" =>
+        ast.add_expr(Expr::Let(bindings, expr)),
     "{" <cs:FunCases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+};
+
+pub Bindings: Vec<Binding> = {
+  <mut bs:(<Binding> ";")*> <b:Binding> => {
+    bs.push(b);
+    bs
+  },
+};
+
+pub Binding: Binding = {
+  <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> =>
+    Binding {
+        fixed: fixed.is_some(),
+        name,
+        expr,
+    },
+  <fixed:"fix"?> <name:Name> "::=" <expr:Located<SimpleDisjunction>> =>
+    Binding {
+        fixed: fixed.is_some(),
+        name,
+        expr,
+    },
+};
+
+pub SimpleDisjunction: ExprId = {
+  <strs:(<Located<BareString>>)*> => {
+    let choices = strs.into_iter().map(|l| {
+      Choice {
+        weight: None,
+        value: Located::new(
+          ast.add_expr(Expr::Lit(Literal::Str(l.item))),
+          file,
+          l.loc.span,
+        ),
+      }
+    }).collect();
+    ast.add_expr(Expr::Chc(choices))
+  }
 };
 
 pub Cases: Vec<Case> = {

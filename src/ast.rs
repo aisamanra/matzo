@@ -19,10 +19,7 @@ pub enum Stmt {
     /// replace a named item with the forced version of that item
     Fix(Name),
     /// assign a value to a name which may or may not be forced.
-    Assn(bool, Name, ExprRef),
-    /// assign one of a set of strings to a name, which may or may not
-    /// be forced
-    LitAssn(bool, Name, Vec<Name>),
+    Assn(Binding),
 }
 
 impl Stmt {
@@ -54,7 +51,7 @@ pub enum Expr {
     /// A tuple of expressions
     Tup(Vec<ExprRef>),
     /// A (possibly strict) let-binding
-    Let(bool, Name, ExprRef, ExprRef),
+    Let(Vec<Binding>, ExprRef),
     /// A lambda, defined by cases
     Fun(Vec<Case>),
     /// A range of numbers
@@ -64,6 +61,13 @@ pub enum Expr {
     /// An empty tree. (We can't write this, but we desugar into it
     /// sometimes)
     Nil,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub fixed: bool,
+    pub name: Name,
+    pub expr: ExprRef,
 }
 
 /// An `ExprRef` contains not just an index but also a wrapped
@@ -194,7 +198,7 @@ impl ASTArena {
                 self.show_expr(&self[expr.item], f, 0)
             }
             Stmt::Fix(name) => writeln!(f, "Fix {}", &self[name.item]),
-            Stmt::Assn(fixed, name, expr) => {
+            Stmt::Assn(Binding { fixed, name, expr }) => {
                 write!(
                     f,
                     "Assn {} {} ",
@@ -202,19 +206,6 @@ impl ASTArena {
                     &self[name.item]
                 )?;
                 self.show_expr(&self[expr.item], f, 0)
-            }
-            Stmt::LitAssn(fixed, name, strs) => {
-                write!(
-                    f,
-                    "LitAssn {} {}, [ ",
-                    if *fixed { "fixed" } else { "" },
-                    &self[name.item],
-                )?;
-                for str in strs.iter() {
-                    let s = &self[str.item];
-                    write!(f, " {} ", s)?;
-                }
-                writeln!(f, "]")
             }
         }
     }
@@ -316,15 +307,18 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Let(fixed, name, expr, body) => {
-                writeln!(
-                    f,
-                    "Let({}{}",
-                    if *fixed { "fixed " } else { "" },
-                    &self[name.item]
-                )?;
-                self.indent(f, depth + 2)?;
-                self.show_expr(&self[*expr], f, depth + 2)?;
+            Expr::Let(bindings, body) => {
+                writeln!(f, "Let(")?;
+                for Binding { fixed, name, expr } in bindings {
+                    self.indent(f, depth + 2)?;
+                    writeln!(
+                        f,
+                        "{}{} :=",
+                        if *fixed { "fixed " } else { "" },
+                        &self[name.item]
+                    )?;
+                    self.show_expr(&self[*expr], f, depth + 2)?;
+                }
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*body], f, depth + 2)?;
                 self.indent(f, depth)?;

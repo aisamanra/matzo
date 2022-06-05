@@ -287,49 +287,8 @@ impl State {
 
             // assign a given expression to a name, forcing it to a
             // value if the assignment is `fixed`.
-            Stmt::Assn(fixed, name, expr) => {
-                let thunk = if *fixed {
-                    let val = self.eval(*expr, &None)?;
-                    let val = self.force(val)?;
-                    Thunk::Value(val)
-                } else {
-                    Thunk::Expr(*expr, None)
-                };
-                self.root_scope.borrow_mut().insert(name.item, thunk);
-            }
-
-            // assign a simple disjunction of strings to a name,
-            // forcing it to a value if the assignment is `fixed`.
-            Stmt::LitAssn(fixed, name, strs) => {
-                if *fixed {
-                    let choice = &strs[self.rand.borrow_mut().gen_range_usize(0, strs.len())];
-                    let str = self.ast.borrow()[choice.item].to_string();
-                    self.root_scope
-                        .borrow_mut()
-                        .insert(name.item, Thunk::Value(Value::Lit(Literal::Str(str))));
-                    return Ok(());
-                }
-
-                let choices: Vec<Choice> = strs
-                    .iter()
-                    .map(|s| {
-                        let str = self.ast.borrow()[s.item].to_string();
-                        Choice {
-                            weight: None,
-                            value: Located {
-                                loc: s.loc,
-                                item: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(str))),
-                            },
-                        }
-                    })
-                    .collect();
-                let choices = Located {
-                    loc: choices.first().unwrap().value.loc,
-                    item: self.ast.borrow_mut().add_expr(Expr::Chc(choices)),
-                };
-                self.root_scope
-                    .borrow_mut()
-                    .insert(name.item, Thunk::Expr(choices, None));
+            Stmt::Assn(binding) => {
+                self.extend_scope(binding, &None, &mut self.root_scope.borrow_mut())?
             }
         }
         Ok(())
@@ -463,20 +422,17 @@ impl State {
             // for a let-expression, create a new scope, add the new
             // name to it (optionally forcing it if `fixed`) and then
             // evaluate the body within that scope.
-            Expr::Let(fixed, name, val, body) => {
-                let mut new_scope = HashMap::new();
-                if *fixed {
-                    let val = self.eval(*val, env)?;
-                    let val = self.force(val)?;
-                    new_scope.insert(name.item, Thunk::Value(val));
-                } else {
-                    new_scope.insert(name.item, Thunk::Expr(*val, env.clone()));
-                };
-                let new_scope = Rc::new(Scope {
-                    vars: new_scope,
-                    parent: env.clone(),
-                });
-                self.eval(*body, &Some(new_scope))
+            Expr::Let(bindings, body) => {
+                let mut last_scope = env.clone();
+                for b in bindings.iter() {
+                    let mut binding = HashMap::new();
+                    self.extend_scope(b, &last_scope, &mut binding)?;
+                    last_scope = Some(Rc::new(Scope {
+                        vars: binding,
+                        parent: last_scope.clone(),
+                    }));
+                }
+                self.eval(*body, &last_scope)
             }
 
             // For a `case`, we actually kind of cheat: we treat it
@@ -493,6 +449,22 @@ impl State {
                 self.eval_closure(&closure, vec![Thunk::Expr(*scrut, env.clone())])
             }
         }
+    }
+
+    fn extend_scope(
+        &self,
+        binding: &Binding,
+        env: &Env,
+        scope: &mut HashMap<StrRef, Thunk>,
+    ) -> Result<(), MatzoError> {
+        if binding.fixed {
+            let val = self.eval(binding.expr, env)?;
+            let val = self.force(val)?;
+            scope.insert(binding.name.item, Thunk::Value(val));
+        } else {
+            scope.insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
+        }
+        Ok(())
     }
 
     /// Evaluate a closure as applied to a given argument.
