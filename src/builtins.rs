@@ -24,6 +24,23 @@ fn arity_error(func: &str, expected: usize, actual: &[ExprRef]) -> Result<Value,
     }
 }
 
+fn tuple_flatten_helper(
+    state: &State,
+    val: Value,
+    env: &Env,
+    cb: &mut impl FnMut(Value),
+) -> Result<(), MatzoError> {
+    if let Value::Tup(thunks) = val {
+        for thunk in thunks.iter() {
+            let val = state.hnf(thunk)?;
+            tuple_flatten_helper(state, val, env, cb)?
+        }
+    } else {
+        cb(val)
+    }
+    Ok(())
+}
+
 /// The list of builtins provided at startup.
 pub fn builtins() -> Vec<BuiltinFunc> {
     vec![
@@ -217,6 +234,21 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     } else {
                         arity_error("tuple/concat", 1, exprs)
                     }
+                },
+            ),
+        },
+        BuiltinFunc {
+            name: "tuple/flatten",
+            callback: Box::new(
+                |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
+                    let mut contents = Vec::new();
+                    for expr in exprs.iter() {
+                        let val = state.eval(*expr, env)?;
+                        tuple_flatten_helper(state, val, env, &mut |v| {
+                            contents.push(Thunk::Value(v));
+                        })?;
+                    }
+                    Ok(Value::Tup(contents))
                 },
             ),
         },
