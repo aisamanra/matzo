@@ -128,13 +128,20 @@ pub Leaf: ExprId = {
             ast.add_expr(Expr::Tup(es))
         }
     },
-    "let" <binding:Binding> "in" "{" <expr:Located<Expr>> "}" =>
-        ast.add_expr(Expr::Let(binding, expr)),
+    "let" <bindings:Bindings> "in" "{" <expr:Located<Expr>> "}" =>
+        ast.add_expr(Expr::Let(bindings, expr)),
     "{" <cs:FunCases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+};
+
+pub Bindings: Vec<Binding> = {
+  <mut bs:(<Binding> ";")*> <b:Binding> => {
+    bs.push(b);
+    bs
+  },
 };
 
 pub Binding: Binding = {

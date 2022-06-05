@@ -422,9 +422,11 @@ impl State {
             // for a let-expression, create a new scope, add the new
             // name to it (optionally forcing it if `fixed`) and then
             // evaluate the body within that scope.
-            Expr::Let(binding, body) => {
+            Expr::Let(bindings, body) => {
                 let mut new_scope = HashMap::new();
-                self.extend_scope(binding, env, &mut new_scope)?;
+                for b in bindings.iter() {
+                    self.extend_scope(b, env, &mut new_scope)?;
+                }
                 let new_scope = Rc::new(Scope {
                     vars: new_scope,
                     parent: env.clone(),

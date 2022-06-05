@@ -51,7 +51,7 @@ pub enum Expr {
     /// A tuple of expressions
     Tup(Vec<ExprRef>),
     /// A (possibly strict) let-binding
-    Let(Binding, ExprRef),
+    Let(Vec<Binding>, ExprRef),
     /// A lambda, defined by cases
     Fun(Vec<Case>),
     /// A range of numbers
@@ -307,15 +307,18 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Let(Binding { fixed, name, expr }, body) => {
-                writeln!(
-                    f,
-                    "Let({}{}",
-                    if *fixed { "fixed " } else { "" },
-                    &self[name.item]
-                )?;
-                self.indent(f, depth + 2)?;
-                self.show_expr(&self[*expr], f, depth + 2)?;
+            Expr::Let(bindings, body) => {
+                writeln!(f, "Let(")?;
+                for Binding { fixed, name, expr } in bindings {
+                    self.indent(f, depth + 2)?;
+                    writeln!(
+                        f,
+                        "{}{} :=",
+                        if *fixed { "fixed " } else { "" },
+                        &self[name.item]
+                    )?;
+                    self.show_expr(&self[*expr], f, depth + 2)?;
+                }
                 self.indent(f, depth + 2)?;
                 self.show_expr(&self[*body], f, depth + 2)?;
                 self.indent(f, depth)?;
