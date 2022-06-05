@@ -3,9 +3,9 @@ cons := "p" | "t" | "k"
       | "s" | "ʃ" | "ɾ";
 vowel ::= a i u;
 rime := 4: <vowel> | <vowel, "ʔ">;
-syll := tuple/concat[<<cons>, rime>];
+syll := tuple/flatten[cons, rime];
 
-word := tuple/concat[tuple/rep[2..4, syll]];
+word := tuple/flatten[tuple/rep[2..4, syll]];
 
 orthography := {
   ["ʃ"] => "sh";
