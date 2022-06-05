@@ -33,8 +33,7 @@ tool := { ["stonemason"] => "chisel"
 adjective ::= happy cheerful focused quiet meek rash;
 
 person :=
-  let fix my-gender := gender in {
-  let fix my-job := job[my-gender] in {
+  let fix my-gender := gender; fix my-job := job[my-gender] in {
     se[
       "You come across",
       str/capitalize[name[my-gender]],
@@ -68,5 +67,5 @@ person :=
       adjective,
       "."
     ]
-  } };
+  };
 puts person;
