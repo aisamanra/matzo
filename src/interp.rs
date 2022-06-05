@@ -287,49 +287,8 @@ impl State {
 
             // assign a given expression to a name, forcing it to a
             // value if the assignment is `fixed`.
-            Stmt::Assn(fixed, name, expr) => {
-                let thunk = if *fixed {
-                    let val = self.eval(*expr, &None)?;
-                    let val = self.force(val)?;
-                    Thunk::Value(val)
-                } else {
-                    Thunk::Expr(*expr, None)
-                };
-                self.root_scope.borrow_mut().insert(name.item, thunk);
-            }
-
-            // assign a simple disjunction of strings to a name,
-            // forcing it to a value if the assignment is `fixed`.
-            Stmt::LitAssn(fixed, name, strs) => {
-                if *fixed {
-                    let choice = &strs[self.rand.borrow_mut().gen_range_usize(0, strs.len())];
-                    let str = self.ast.borrow()[choice.item].to_string();
-                    self.root_scope
-                        .borrow_mut()
-                        .insert(name.item, Thunk::Value(Value::Lit(Literal::Str(str))));
-                    return Ok(());
-                }
-
-                let choices: Vec<Choice> = strs
-                    .iter()
-                    .map(|s| {
-                        let str = self.ast.borrow()[s.item].to_string();
-                        Choice {
-                            weight: None,
-                            value: Located {
-                                loc: s.loc,
-                                item: self.ast.borrow_mut().add_expr(Expr::Lit(Literal::Str(str))),
-                            },
-                        }
-                    })
-                    .collect();
-                let choices = Located {
-                    loc: choices.first().unwrap().value.loc,
-                    item: self.ast.borrow_mut().add_expr(Expr::Chc(choices)),
-                };
-                self.root_scope
-                    .borrow_mut()
-                    .insert(name.item, Thunk::Expr(choices, None));
+            Stmt::Assn(binding) => {
+                self.extend_scope(binding, &None, &mut self.root_scope.borrow_mut())?
             }
         }
         Ok(())

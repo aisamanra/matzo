@@ -19,10 +19,7 @@ pub enum Stmt {
     /// replace a named item with the forced version of that item
     Fix(Name),
     /// assign a value to a name which may or may not be forced.
-    Assn(bool, Name, ExprRef),
-    /// assign one of a set of strings to a name, which may or may not
-    /// be forced
-    LitAssn(bool, Name, Vec<Name>),
+    Assn(Binding),
 }
 
 impl Stmt {
@@ -201,7 +198,7 @@ impl ASTArena {
                 self.show_expr(&self[expr.item], f, 0)
             }
             Stmt::Fix(name) => writeln!(f, "Fix {}", &self[name.item]),
-            Stmt::Assn(fixed, name, expr) => {
+            Stmt::Assn(Binding { fixed, name, expr }) => {
                 write!(
                     f,
                     "Assn {} {} ",
@@ -209,19 +206,6 @@ impl ASTArena {
                     &self[name.item]
                 )?;
                 self.show_expr(&self[expr.item], f, 0)
-            }
-            Stmt::LitAssn(fixed, name, strs) => {
-                write!(
-                    f,
-                    "LitAssn {} {}, [ ",
-                    if *fixed { "fixed" } else { "" },
-                    &self[name.item],
-                )?;
-                for str in strs.iter() {
-                    let s = &self[str.item];
-                    write!(f, " {} ", s)?;
-                }
-                writeln!(f, "]")
             }
         }
     }

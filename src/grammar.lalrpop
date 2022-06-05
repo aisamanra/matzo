@@ -50,13 +50,7 @@ pub Stmts: Vec<Stmt> = {
 
 pub Stmt: Stmt = {
     "puts" <Located<Expr>> => Stmt::Puts(<>),
-    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> => Stmt::Assn(fixed.is_some(), name, expr),
-    <fixed:"fix"?> <name:Name> "::=" <strs:(<Located<AtomLit>>)*> =>
-        Stmt::LitAssn(
-            fixed.is_some(),
-            name,
-            strs,
-        ),
+    <binding:Binding> => Stmt::Assn(binding),
     "fix" <Name> => Stmt::Fix(<>),
 };
 
