@@ -65,6 +65,11 @@ pub AtomLit: string_interner::DefaultSymbol = {
     "atom" => ast.add_string(<>),
 };
 
+pub BareString: String = {
+    "var" => <>.to_string(),
+    "atom" => <>.to_string(),
+};
+
 pub Name: Name = {
     <start: @L> <str:"var"> <end: @R> =>
         Located::new(ast.add_string(str), file, Span { start: start as u32, end: end as u32 }),
@@ -139,12 +144,34 @@ pub Leaf: ExprId = {
 };
 
 pub Binding: Binding = {
-    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> =>
-      Binding {
-          fixed: fixed.is_some(),
-          name,
-          expr,
-      },
+  <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> =>
+    Binding {
+        fixed: fixed.is_some(),
+        name,
+        expr,
+    },
+  <fixed:"fix"?> <name:Name> "::=" <expr:Located<SimpleDisjunction>> =>
+    Binding {
+        fixed: fixed.is_some(),
+        name,
+        expr,
+    },
+};
+
+pub SimpleDisjunction: ExprId = {
+  <strs:(<Located<BareString>>)*> => {
+    let choices = strs.into_iter().map(|l| {
+      Choice {
+        weight: None,
+        value: Located::new(
+          ast.add_expr(Expr::Lit(Literal::Str(l.item))),
+          file,
+          l.loc.span,
+        ),
+      }
+    }).collect();
+    ast.add_expr(Expr::Chc(choices))
+  }
 };
 
 pub Cases: Vec<Case> = {
