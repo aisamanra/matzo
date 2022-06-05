@@ -463,15 +463,9 @@ impl State {
             // for a let-expression, create a new scope, add the new
             // name to it (optionally forcing it if `fixed`) and then
             // evaluate the body within that scope.
-            Expr::Let(Binding { fixed, name, expr: val }, body) => {
+            Expr::Let(binding, body) => {
                 let mut new_scope = HashMap::new();
-                if *fixed {
-                    let val = self.eval(*val, env)?;
-                    let val = self.force(val)?;
-                    new_scope.insert(name.item, Thunk::Value(val));
-                } else {
-                    new_scope.insert(name.item, Thunk::Expr(*val, env.clone()));
-                };
+                self.extend_scope(binding, env, &mut new_scope)?;
                 let new_scope = Rc::new(Scope {
                     vars: new_scope,
                     parent: env.clone(),
@@ -493,6 +487,22 @@ impl State {
                 self.eval_closure(&closure, vec![Thunk::Expr(*scrut, env.clone())])
             }
         }
+    }
+
+    fn extend_scope(
+        &self,
+        binding: &Binding,
+        env: &Env,
+        scope: &mut HashMap<StrRef, Thunk>,
+    ) -> Result<(), MatzoError> {
+        if binding.fixed {
+            let val = self.eval(binding.expr, env)?;
+            let val = self.force(val)?;
+            scope.insert(binding.name.item, Thunk::Value(val));
+        } else {
+            scope.insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
+        }
+        Ok(())
     }
 
     /// Evaluate a closure as applied to a given argument.
