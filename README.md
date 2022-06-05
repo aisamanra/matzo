@@ -158,17 +158,17 @@ cons := "p" | "t" | "k"
 vowel ::= a i u;
 ```
 
-Our next definitions create the [rime](https://en.wikipedia.org/wiki/Syllable#Rime) out of a vowel and an optional glottal stop, and then the syllable by choosing a random consonant and then a vowel. However, notice that we are producing _tuples_ instead of strings here: the result of `rime` will be either `<vowel>` or `<vowel, "ʔ">`, and `syll` will use `tuple/concat` to combine the rime with a consonant and flatten it down to either `<cons, vowel>` or `<cons, vowel, "ʔ">`.
+Our next definitions create the [rime](https://en.wikipedia.org/wiki/Syllable#Rime) out of a vowel and an optional glottal stop, and then the syllable by choosing a random consonant and then a vowel. However, notice that we are producing _tuples_ instead of strings here: the result of `rime` will be either `<vowel>` or `<vowel, "ʔ">`, and `syll` will use `tuple/flatten` to combine the rime with a consonant and flatten it down to either `<cons, vowel>` or `<cons, vowel, "ʔ">`.
 
 ```
 rime := 4: <vowel> | <vowel, "ʔ">;
-syll := tuple/concat[<<cons>, rime>];
+syll := tuple/flatten[cons, rime];
 ```
 
 We then produce the `word` by producing 2 to 4 copies of this syllable (which might look like, say, `<<cons, vowel>, <cons vowel, "ʔ">>`) and then flattening it again (to produce `<cons, vowel, cons, vowel, "ʔ">`.)
 
 ```
-word := tuple/concat[tuple/rep[2..4, syll]];
+word := tuple/flatten[tuple/rep[2..4, syll]];
 ```
 
 Now, we define a function called `orthography` which takes a IPA string and replaces it with the orthographic equivalent. We also allow most of the letters to remain unchanged, but the four IPA letters are replaced with corresponding letters in the Latin alphabet.
