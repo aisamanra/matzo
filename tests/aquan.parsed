@@ -1,4 +1,11 @@
-LitAssn  cons, [  p  t  k  w  h  n ]
+Assn  cons Chc(
+  Str("p")
+  Str("t")
+  Str("k")
+  Str("w")
+  Str("h")
+  Str("n")
+)
 
 Assn  vowel Cat(
   Chc(

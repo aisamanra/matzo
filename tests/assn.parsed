@@ -2,7 +2,17 @@ Assn  x Num(5)
 
 Assn  y Lit(Atom(This))
 
-LitAssn  a, [  a  b  c  d ]
+Assn  a Chc(
+  Str("a")
+  Str("b")
+  Str("c")
+  Str("d")
+)
 
-LitAssn  fóo, [  á  þ  ç  đ ]
+Assn  fóo Chc(
+  Str("á")
+  Str("þ")
+  Str("ç")
+  Str("đ")
+)
 
