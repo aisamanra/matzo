@@ -463,7 +463,7 @@ impl State {
             // for a let-expression, create a new scope, add the new
             // name to it (optionally forcing it if `fixed`) and then
             // evaluate the body within that scope.
-            Expr::Let(fixed, name, val, body) => {
+            Expr::Let(Binding { fixed, name, expr: val }, body) => {
                 let mut new_scope = HashMap::new();
                 if *fixed {
                     let val = self.eval(*val, env)?;

@@ -54,7 +54,7 @@ pub enum Expr {
     /// A tuple of expressions
     Tup(Vec<ExprRef>),
     /// A (possibly strict) let-binding
-    Let(bool, Name, ExprRef, ExprRef),
+    Let(Binding, ExprRef),
     /// A lambda, defined by cases
     Fun(Vec<Case>),
     /// A range of numbers
@@ -64,6 +64,13 @@ pub enum Expr {
     /// An empty tree. (We can't write this, but we desugar into it
     /// sometimes)
     Nil,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub fixed: bool,
+    pub name: Name,
+    pub expr: ExprRef,
 }
 
 /// An `ExprRef` contains not just an index but also a wrapped
@@ -316,7 +323,7 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Let(fixed, name, expr, body) => {
+            Expr::Let(Binding { fixed, name, expr }, body) => {
                 writeln!(
                     f,
                     "Let({}{}",

@@ -129,13 +129,22 @@ pub Leaf: ExprId = {
             ast.add_expr(Expr::Tup(es))
         }
     },
-    "let" <fixed:"fix"?> <name:Name> ":=" <e1:Located<Expr>> "in" "{" <e2:Located<Expr>> "}" =>
-        ast.add_expr(Expr::Let(fixed.is_some(), name, e1, e2)),
+    "let" <binding:Binding> "in" "{" <expr:Located<Expr>> "}" =>
+        ast.add_expr(Expr::Let(binding, expr)),
     "{" <cs:FunCases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+};
+
+pub Binding: Binding = {
+    <fixed:"fix"?> <name:Name> ":=" <expr:Located<Expr>> =>
+      Binding {
+          fixed: fixed.is_some(),
+          name,
+          expr,
+      },
 };
 
 pub Cases: Vec<Case> = {
