@@ -423,15 +423,16 @@ impl State {
             // name to it (optionally forcing it if `fixed`) and then
             // evaluate the body within that scope.
             Expr::Let(bindings, body) => {
-                let mut new_scope = HashMap::new();
+                let mut last_scope = env.clone();
                 for b in bindings.iter() {
-                    self.extend_scope(b, env, &mut new_scope)?;
+                    let mut binding = HashMap::new();
+                    self.extend_scope(b, &last_scope, &mut binding)?;
+                    last_scope = Some(Rc::new(Scope {
+                        vars: binding,
+                        parent: last_scope.clone(),
+                    }));
                 }
-                let new_scope = Rc::new(Scope {
-                    vars: new_scope,
-                    parent: env.clone(),
-                });
-                self.eval(*body, &Some(new_scope))
+                self.eval(*body, &last_scope)
             }
 
             // For a `case`, we actually kind of cheat: we treat it
