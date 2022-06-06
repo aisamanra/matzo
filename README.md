@@ -139,6 +139,7 @@ Matzo has a handful of functions which help writing certain kinds of programs. T
 - `str/upper[str]`, `str/lower[str]`, and `str/capitalize[str]` will modify strings for their case. The two functions `str/upper` and `str/lower` convert their arguments fully to upper- and lower-case, respectively, while `str/capitalize` will attempt to turn its argument to title-case, e.g. `str/capitalize["foo bar"]` produces `Foo Bar`.
 - `add[x, y]`, `sub[x, y]`, and `mul[x, y]` peform the relevant arithmetic operations on integers.
 - `tuple/concat[tup]` takes a tuple of tuples and flattens it into a tuple, e.g. `tuple/concat[<<1>, <2>>]` produces `<1, 2>`.
+- `tuple/flatten[val...]` takes any number of arguments and produces a flat tuple, appending and concatenating as necessary: for example, `tuple/flatten[1, 2, 3]` and `tuple/flatten[<1, <2>>, <<<3>>>]` will both produce `<1, 2, 3>`. It should be noted that in order for this to work `tuple/flatten` will necessarily force its argument fully.
 - `tuple/rep[num, expr]` creates a tuple by repeating `expr` `num` times. For example, `tuple/rep[2, X]` produces `<X, X>`. Like `rep`, this treats the second argument lazily.
 - `tuple/index[tup, num]` returns the nth element of `tup`, zero-indexed.
 - `tuple/replace[tup, num, new]` replaced the nth element of `tup` with `new`.
@@ -157,17 +158,17 @@ cons := "p" | "t" | "k"
 vowel ::= a i u;
 ```
 
-Our next definitions create the [rime](https://en.wikipedia.org/wiki/Syllable#Rime) out of a vowel and an optional glottal stop, and then the syllable by choosing a random consonant and then a vowel. However, notice that we are producing _tuples_ instead of strings here: the result of `rime` will be either `<vowel>` or `<vowel, "ʔ">`, and `syll` will use `tuple/concat` to combine the rime with a consonant and flatten it down to either `<cons, vowel>` or `<cons, vowel, "ʔ">`.
+Our next definitions create the [rime](https://en.wikipedia.org/wiki/Syllable#Rime) out of a vowel and an optional glottal stop, and then the syllable by choosing a random consonant and then a vowel. However, notice that we are producing _tuples_ instead of strings here: the result of `rime` will be either `<vowel>` or `<vowel, "ʔ">`, and `syll` will use `tuple/flatten` to combine the rime with a consonant and flatten it down to either `<cons, vowel>` or `<cons, vowel, "ʔ">`.
 
 ```
 rime := 4: <vowel> | <vowel, "ʔ">;
-syll := tuple/concat[<<cons>, rime>];
+syll := tuple/flatten[cons, rime];
 ```
 
 We then produce the `word` by producing 2 to 4 copies of this syllable (which might look like, say, `<<cons, vowel>, <cons vowel, "ʔ">>`) and then flattening it again (to produce `<cons, vowel, cons, vowel, "ʔ">`.)
 
 ```
-word := tuple/concat[tuple/rep[2..4, syll]];
+word := tuple/flatten[tuple/rep[2..4, syll]];
 ```
 
 Now, we define a function called `orthography` which takes a IPA string and replaces it with the orthographic equivalent. We also allow most of the letters to remain unchanged, but the four IPA letters are replaced with corresponding letters in the Latin alphabet.
