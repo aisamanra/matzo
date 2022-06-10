@@ -19,11 +19,11 @@ test = true
 path = "tools/regenerate.rs"
 
 [dependencies]
-regex = "1"
+regex = "1.5.5"
 rand = "*"
 lalrpop-util = { version = "*", features = ["lexer"] }
 logos = "*"
-rustyline = "*"
+rustyline = "9.1"
 ansi_term = "*"
 string-interner = "*"
 anyhow = "*"
@@ -31,6 +31,7 @@ titlecase = "*"
 serde = { version = "1.0", features = ["derive"] }
 clap = "2.33"
 serde_yaml = "0.8"
+dirs = "*"
 
 [build-dependencies]
 vergen = "*"
