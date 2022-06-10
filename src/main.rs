@@ -45,8 +45,16 @@ fn matzo_version() -> String {
     format!("matzo (git {})", env!("VERGEN_GIT_SHA"))
 }
 
+const MATZO_HISTORY_FILENAME: &'static str = "matzo-history.txt";
+
 fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
     let mut rl = rustyline::Editor::<matzo::repl::Repl>::new();
+    rl.history_mut().set_max_len(5000);
+    let history_file = dirs::cache_dir().map(|mut path| {
+        path.push(MATZO_HISTORY_FILENAME);
+        let _ = rl.load_history(&path);
+        path
+    });
     let state = if let Some(s) = seed {
         State::new_from_seed(s)
     } else {
@@ -59,9 +67,17 @@ fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let line = match rl.readline(">>> ") {
-            Ok(ln) => ln,
+            Ok(ln) => {
+                rl.add_history_entry(ln.as_str());
+                ln
+            }
             Err(rustyline::error::ReadlineError::Eof)
-            | Err(rustyline::error::ReadlineError::Interrupted) => return Ok(()),
+            | Err(rustyline::error::ReadlineError::Interrupted) => {
+                if let Some(p) = history_file {
+                    rl.save_history(&p)?;
+                }
+                return Ok(());
+            }
             err => err?,
         };
 
