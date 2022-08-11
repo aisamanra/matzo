@@ -1,0 +1,49 @@
+Assn  r Record(
+  x
+Chc(
+    Str("a")
+    Str("b")
+    Str("c")
+  )
+  y
+Chc(
+    Num(22)
+    Num(33)
+    Num(44)
+  )
+)
+
+Puts Access(
+Var(r)
+y
+
+Puts Str("before fixing:")
+
+Puts Access(
+Var(r)
+x
+
+Puts Access(
+Var(r)
+x
+
+Puts Access(
+Var(r)
+x
+
+Fix r
+
+Puts Str("after fixing:")
+
+Puts Access(
+Var(r)
+x
+
+Puts Access(
+Var(r)
+x
+
+Puts Access(
+Var(r)
+x
+
