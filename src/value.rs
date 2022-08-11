@@ -15,6 +15,7 @@ use std::rc::Rc;
 pub enum Value {
     Lit(Literal),
     Tup(Vec<Thunk>),
+    Record(HashMap<StrRef, Thunk>),
     Builtin(BuiltinRef),
     Closure(Closure),
     Nil,
@@ -77,6 +78,7 @@ impl Value {
             Value::Lit(Literal::Str(s)) => f(s),
             Value::Lit(Literal::Atom(s)) => f(&ast[s.item].to_string()),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
+
             Value::Tup(values) => {
                 let mut buf = String::new();
                 buf.push('<');
@@ -93,6 +95,26 @@ impl Value {
                 buf.push('>');
                 f(&buf)
             }
+
+            Value::Record(fields) => {
+                let mut buf = String::new();
+                buf.push('{');
+                for (i, (name, val)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        buf.push_str(", ");
+                    }
+                    buf.push_str(&ast[*name]);
+                    buf.push_str(": ");
+                    match val {
+                        Thunk::Value(v) => buf.push_str(&v.to_string(ast)),
+                        Thunk::Expr(..) => buf.push_str("..."),
+                        Thunk::Builtin(func) => write!(buf, "#<builtin {}>", func.idx).unwrap(),
+                    }
+                }
+                buf.push('}');
+                f(&buf)
+            }
+
             Value::Builtin(func) => f(&format!("#<builtin {}>", func.name)),
             Value::Closure(_) => f("#<lambda ...>"),
         }

@@ -308,6 +308,16 @@ impl State {
                     })
                     .collect::<Result<Vec<Thunk>, MatzoError>>()?,
             )),
+            Value::Record(fields) => Ok(Value::Record(
+                fields
+                    .into_iter()
+                    .map(|(k, t)| {
+                        let v = self.hnf(&t)?;
+                        let v = self.force(v)?;
+                        Ok((k, Thunk::Value(v)))
+                    })
+                    .collect::<Result<HashMap<StrRef, Thunk>, MatzoError>>()?,
+            )),
             _ => Ok(val),
         }
     }
@@ -381,6 +391,13 @@ impl State {
                     .collect::<Vec<Thunk>>(),
             )),
 
+            Expr::Record(fields) => Ok(Value::Record(
+                fields.
+                    iter().
+                    map(|f| (f.name.item, Thunk::Expr(f.expr, env.clone())))
+                    .collect(),
+            )),
+
             // for a range, choose randomly between the start and end
             // expressions
             Expr::Range(from, to) => {
@@ -447,6 +464,30 @@ impl State {
                     scope: env.clone(),
                 };
                 self.eval_closure(&closure, vec![Thunk::Expr(*scrut, env.clone())])
+            }
+
+            Expr::Access(expr, field) => {
+                let record = if let Value::Record(rec) = self.eval(*expr, env)? {
+                    rec
+                } else {
+                    return Err(MatzoError::new(
+                        expr_ref.loc,
+                        "{} is not a record and cannot be accessed with field syntax".to_string(),
+                    ));
+                };
+
+                let thunk = if let Some(thunk) = record.get(&field.item) {
+                    thunk
+                } else {
+                    return Err(MatzoError::new(
+                        expr_ref.loc,
+                        format!(
+                            "This record does not contain a field `{}`",
+                            &self.ast.borrow()[field.item],
+                        ),
+                    ));
+                };
+                self.hnf(thunk)
             }
         }
     }

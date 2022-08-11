@@ -46,10 +46,14 @@ pub enum Expr {
     Chc(Vec<Choice>),
     /// A literal: string, integer, or atom
     Lit(Literal),
-    /// Application: applying an expression to one or more arguments.
-    Ap(ExprRef, Vec<ExprRef>),
+
     /// A tuple of expressions
     Tup(Vec<ExprRef>),
+    /// A record with named fields
+    Record(Vec<Field>),
+
+    /// Application: applying an expression to one or more arguments.
+    Ap(ExprRef, Vec<ExprRef>),
     /// A (possibly strict) let-binding
     Let(Vec<Binding>, ExprRef),
     /// A lambda, defined by cases
@@ -58,6 +62,8 @@ pub enum Expr {
     Range(ExprRef, ExprRef),
     /// A case expression with a list of cases
     Case(ExprRef, Vec<Case>),
+    /// Accessing the field of a record
+    Access(ExprRef, Name),
     /// An empty tree. (We can't write this, but we desugar into it
     /// sometimes)
     Nil,
@@ -66,6 +72,12 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub struct Binding {
     pub fixed: bool,
+    pub name: Name,
+    pub expr: ExprRef,
+}
+
+#[derive(Debug, Clone)]
+pub struct Field {
     pub name: Name,
     pub expr: ExprRef,
 }
@@ -280,6 +292,17 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
+            Expr::Record(fields) => {
+                writeln!(f, "Record(")?;
+                for e in fields {
+                    self.indent(f, depth + 2)?;
+                    writeln!(f, "{}", &self[e.name.item])?;
+                    self.show_expr(&self[e.expr], f, depth + 2)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
+            }
+
             Expr::Cat(expr) => {
                 writeln!(f, "Cat(")?;
                 for e in expr {
@@ -354,6 +377,14 @@ impl ASTArena {
                 }
                 self.indent(f, depth)?;
                 writeln!(f, ")")
+            }
+
+            Expr::Access(expr, field) => {
+                writeln!(f, "Access(")?;
+                self.indent(f, depth)?;
+                self.show_expr(&self[expr.item], f, depth + 2)?;
+                self.indent(f, depth)?;
+                writeln!(f, "{}", &self[field.item])
             }
         }
     }

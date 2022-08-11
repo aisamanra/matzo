@@ -31,6 +31,7 @@ extern {
         "let" => Token::Let,
         "in" => Token::In,
         "fix" => Token::Fix,
+        "record" => Token::Record,
         "var" => Token::Var(<&'input str>),
         "atom" => Token::Atom(<&'input str>),
         "num" => Token::Num(<i64>),
@@ -104,7 +105,7 @@ pub Term: ExprId = {
 };
 
 pub Branch: ExprId = {
-//    <l:Located<Branch>> "." <r:Located<Subbranch>> => ast.add_expr(Expr::Ap(l, r)),
+    <l:Located<Branch>> "." <r:Name> => ast.add_expr(Expr::Access(l, r)),
     <l:Located<Branch>> "[" <mut rs:Located<(<Expr> ",")>*> <r:Located<Expr>> "]" => {
         rs.push(r);
         ast.add_expr(Expr::Ap(l, rs))
@@ -128,6 +129,11 @@ pub Leaf: ExprId = {
             ast.add_expr(Expr::Tup(es))
         }
     },
+    "record" "{" <fields:(Field ",")*> <f:Field> "}" => {
+        let mut fields = fields.into_iter().map(|(f, _)| f).collect::<Vec<Field>>();
+        fields.push(f);
+        ast.add_expr(Expr::Record(fields))
+    },
     "let" <bindings:Bindings> "in" "{" <expr:Located<Expr>> "}" =>
         ast.add_expr(Expr::Let(bindings, expr)),
     "{" <cs:FunCases> "}" =>
@@ -135,6 +141,13 @@ pub Leaf: ExprId = {
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+};
+
+pub Field: Field = {
+    <n:Name> ":" <e:Located<Expr>> => Field {
+        name: n,
+        expr: e,
+    },
 };
 
 pub Bindings: Vec<Binding> = {
