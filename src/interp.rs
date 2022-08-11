@@ -288,7 +288,13 @@ impl State {
             // assign a given expression to a name, forcing it to a
             // value if the assignment is `fixed`.
             Stmt::Assn(binding) => {
-                self.extend_scope(binding, &None, &mut self.root_scope.borrow_mut())?
+                self.extend_scope(
+                    binding,
+                    &None,
+                    |k, v| {
+                        self.root_scope.borrow_mut().insert(k, v);
+                    },
+                )?
             }
         }
         Ok(())
@@ -443,7 +449,13 @@ impl State {
                 let mut last_scope = env.clone();
                 for b in bindings.iter() {
                     let mut binding = HashMap::new();
-                    self.extend_scope(b, &last_scope, &mut binding)?;
+                    self.extend_scope(
+                        b,
+                        &last_scope,
+                        |k, v| {
+                            binding.insert(k, v);
+                        },
+                    )?;
                     last_scope = Some(Rc::new(Scope {
                         vars: binding,
                         parent: last_scope.clone(),
@@ -496,14 +508,16 @@ impl State {
         &self,
         binding: &Binding,
         env: &Env,
-        scope: &mut HashMap<StrRef, Thunk>,
+        insert: impl FnOnce(StrRef, Thunk),
     ) -> Result<(), MatzoError> {
         if binding.fixed {
             let val = self.eval(binding.expr, env)?;
             let val = self.force(val)?;
-            scope.insert(binding.name.item, Thunk::Value(val));
+            {
+                insert(binding.name.item, Thunk::Value(val));
+            }
         } else {
-            scope.insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
+            insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
         }
         Ok(())
     }
