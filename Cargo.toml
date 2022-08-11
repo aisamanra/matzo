@@ -18,12 +18,14 @@ name = "matzo-regenerate"
 test = true
 path = "tools/regenerate.rs"
 
+[target.'cfg(unix)'.dependencies]
+rustyline = "9.1"
+
 [dependencies]
 regex = "1.5.5"
 rand = "*"
 lalrpop-util = { version = "*", features = ["lexer"] }
 logos = "*"
-rustyline = "9.1"
 ansi_term = "*"
 string-interner = "*"
 anyhow = "*"
