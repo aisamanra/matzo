@@ -287,15 +287,9 @@ impl State {
 
             // assign a given expression to a name, forcing it to a
             // value if the assignment is `fixed`.
-            Stmt::Assn(binding) => {
-                self.extend_scope(
-                    binding,
-                    &None,
-                    |k, v| {
-                        self.root_scope.borrow_mut().insert(k, v);
-                    },
-                )?
-            }
+            Stmt::Assn(binding) => self.extend_scope(binding, &None, |k, v| {
+                self.root_scope.borrow_mut().insert(k, v);
+            })?,
         }
         Ok(())
     }
@@ -398,9 +392,9 @@ impl State {
             )),
 
             Expr::Record(fields) => Ok(Value::Record(
-                fields.
-                    iter().
-                    map(|f| (f.name.item, Thunk::Expr(f.expr, env.clone())))
+                fields
+                    .iter()
+                    .map(|f| (f.name.item, Thunk::Expr(f.expr, env.clone())))
                     .collect(),
             )),
 
@@ -449,13 +443,9 @@ impl State {
                 let mut last_scope = env.clone();
                 for b in bindings.iter() {
                     let mut binding = HashMap::new();
-                    self.extend_scope(
-                        b,
-                        &last_scope,
-                        |k, v| {
-                            binding.insert(k, v);
-                        },
-                    )?;
+                    self.extend_scope(b, &last_scope, |k, v| {
+                        binding.insert(k, v);
+                    })?;
                     last_scope = Some(Rc::new(Scope {
                         vars: binding,
                         parent: last_scope.clone(),
