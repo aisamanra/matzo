@@ -117,6 +117,9 @@ pub enum Token<'a> {
     #[token("fix")]
     Fix,
 
+    #[token("record")]
+    Record,
+
     #[regex(r"\p{Ll}(\pL|[0-9_/-])*")]
     Var(&'a str),
 
@@ -174,6 +177,7 @@ impl<'a> Token<'a> {
             Token::Let => "`let`".to_string(),
             Token::In => "`in`".to_string(),
             Token::Fix => "`fix`".to_string(),
+            Token::Record => "`record`".to_string(),
 
             Token::Error => "error".to_string(),
         }

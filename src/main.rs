@@ -45,7 +45,7 @@ fn matzo_version() -> String {
     format!("matzo (git {})", env!("VERGEN_GIT_SHA"))
 }
 
-const MATZO_HISTORY_FILENAME: &'static str = "matzo-history.txt";
+const MATZO_HISTORY_FILENAME: &str = "matzo-history.txt";
 
 fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
     let mut rl = rustyline::Editor::<matzo::repl::Repl>::new();

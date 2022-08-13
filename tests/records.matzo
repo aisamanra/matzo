@@ -1,0 +1,18 @@
+r := record {
+  x: "a" | "b" | "c",
+  y: 22 | 33 | 44
+};
+puts r.y;
+
+(* this, because this is non-deterministic *)
+puts "before fixing:";
+puts r.x;
+puts r.x;
+puts r.x;
+
+(* this should force it to hnf *)
+fix r;
+puts "after fixing:";
+puts r.x;
+puts r.x;
+puts r.x;

@@ -287,9 +287,9 @@ impl State {
 
             // assign a given expression to a name, forcing it to a
             // value if the assignment is `fixed`.
-            Stmt::Assn(binding) => {
-                self.extend_scope(binding, &None, &mut self.root_scope.borrow_mut())?
-            }
+            Stmt::Assn(binding) => self.extend_scope(binding, &None, |k, v| {
+                self.root_scope.borrow_mut().insert(k, v);
+            })?,
         }
         Ok(())
     }
@@ -307,6 +307,16 @@ impl State {
                         Ok(Thunk::Value(v))
                     })
                     .collect::<Result<Vec<Thunk>, MatzoError>>()?,
+            )),
+            Value::Record(fields) => Ok(Value::Record(
+                fields
+                    .into_iter()
+                    .map(|(k, t)| {
+                        let v = self.hnf(&t)?;
+                        let v = self.force(v)?;
+                        Ok((k, Thunk::Value(v)))
+                    })
+                    .collect::<Result<HashMap<StrRef, Thunk>, MatzoError>>()?,
             )),
             _ => Ok(val),
         }
@@ -381,6 +391,13 @@ impl State {
                     .collect::<Vec<Thunk>>(),
             )),
 
+            Expr::Record(fields) => Ok(Value::Record(
+                fields
+                    .iter()
+                    .map(|f| (f.name.item, Thunk::Expr(f.expr, env.clone())))
+                    .collect(),
+            )),
+
             // for a range, choose randomly between the start and end
             // expressions
             Expr::Range(from, to) => {
@@ -426,7 +443,9 @@ impl State {
                 let mut last_scope = env.clone();
                 for b in bindings.iter() {
                     let mut binding = HashMap::new();
-                    self.extend_scope(b, &last_scope, &mut binding)?;
+                    self.extend_scope(b, &last_scope, |k, v| {
+                        binding.insert(k, v);
+                    })?;
                     last_scope = Some(Rc::new(Scope {
                         vars: binding,
                         parent: last_scope.clone(),
@@ -448,6 +467,30 @@ impl State {
                 };
                 self.eval_closure(&closure, vec![Thunk::Expr(*scrut, env.clone())])
             }
+
+            Expr::Access(expr, field) => {
+                let record = if let Value::Record(rec) = self.eval(*expr, env)? {
+                    rec
+                } else {
+                    return Err(MatzoError::new(
+                        expr_ref.loc,
+                        "{} is not a record and cannot be accessed with field syntax".to_string(),
+                    ));
+                };
+
+                let thunk = if let Some(thunk) = record.get(&field.item) {
+                    thunk
+                } else {
+                    return Err(MatzoError::new(
+                        expr_ref.loc,
+                        format!(
+                            "This record does not contain a field `{}`",
+                            &self.ast.borrow()[field.item],
+                        ),
+                    ));
+                };
+                self.hnf(thunk)
+            }
         }
     }
 
@@ -455,14 +498,16 @@ impl State {
         &self,
         binding: &Binding,
         env: &Env,
-        scope: &mut HashMap<StrRef, Thunk>,
+        insert: impl FnOnce(StrRef, Thunk),
     ) -> Result<(), MatzoError> {
         if binding.fixed {
             let val = self.eval(binding.expr, env)?;
             let val = self.force(val)?;
-            scope.insert(binding.name.item, Thunk::Value(val));
+            {
+                insert(binding.name.item, Thunk::Value(val));
+            }
         } else {
-            scope.insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
+            insert(binding.name.item, Thunk::Expr(binding.expr, env.clone()));
         }
         Ok(())
     }
