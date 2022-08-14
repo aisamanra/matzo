@@ -2,7 +2,7 @@ use crate::ast::*;
 use crate::core::Loc;
 use crate::errors::MatzoError;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Write;
 use std::rc::Rc;
 
@@ -15,7 +15,7 @@ use std::rc::Rc;
 pub enum Value {
     Lit(Literal),
     Tup(Vec<Thunk>),
-    Record(HashMap<StrRef, Thunk>),
+    Record(BTreeMap<StrRef, Thunk>),
     Builtin(BuiltinRef),
     Closure(Closure),
     Nil,

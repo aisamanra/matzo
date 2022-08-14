@@ -8,7 +8,7 @@ use crate::{grammar, lexer};
 
 use anyhow::{bail, Error};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::io;
 use std::rc::Rc;
@@ -316,7 +316,7 @@ impl State {
                         let v = self.force(v)?;
                         Ok((k, Thunk::Value(v)))
                     })
-                    .collect::<Result<HashMap<StrRef, Thunk>, MatzoError>>()?,
+                    .collect::<Result<BTreeMap<StrRef, Thunk>, MatzoError>>()?,
             )),
             _ => Ok(val),
         }
