@@ -1,4 +1,4 @@
-**Matzo** is a little dynamically typed language intended for creating fragments of random text. Matzo programs nondeterministically produce strings as output.
+**Matzo** is a little dynamically typed language intended for creating fragments of random text. Matzo programs nondeterministically produce strings as output. [Try Matzo in your browser today!](https://gdritter.com/mtz.html)
 
 ```
 consonant ::= p t k w h n;
