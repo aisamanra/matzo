@@ -1,5 +1,9 @@
 gender:= Male | Female | Unspec;
-byGender := { [m,f,n] => { [Male] => m; [Female] => f; [_] => n }};
+fn byGender[m,f,n] => fn {
+  [Male]   => m;
+  [Female] => f;
+  [_]      => n;
+};
 
 ending  := byGender["o","a","e"];
 pronoun := byGender["he","she","they"];
@@ -10,12 +14,12 @@ have    := byGender["has", "has", "have"];
 cons  ::= p t c d g r l m n x;
 vowel ::= a e i o u;
 
-name := { [g] => (vowel | "") rep[1..3, cons vowel] cons ending[g] };
+fn name[g] => (vowel | "") rep[1..3, cons vowel] cons ending[g];
 
 hairColor ::= black brown blonde;
 eyeColor  ::= brown green blue;
 
-job := { [g] =>
+fn job[g] =>
     "stonemason"
   | "baker"
   | "accountant"
@@ -23,8 +27,9 @@ job := { [g] =>
       { Male   => "fisherman"
       ; Female => "fisherwoman"
       ; _      => "fisher"
-      } };
-tool := { ["stonemason"] => "chisel"
+      };
+
+fn tool { ["stonemason"] => "chisel"
         ; ["baker"]      => "bowl"
         ; ["accountant"] => "tablet"
         ; [_]            => "fishing pole"
