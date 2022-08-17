@@ -1,0 +1,83 @@
+Assn fixed id Fun(
+  x, 
+ =>
+    Var(x)
+)
+
+Puts Cat(
+  Str("id['y'] => ")
+  Ap(
+    Var(id)
+    Str("y")
+  )
+)
+
+Assn fixed const Fun(
+  _, 
+y, 
+ =>
+    Var(y)
+)
+
+Puts Cat(
+  Str("const[1, 2] => ")
+  Ap(
+    Var(const)
+    Num(1)
+    Num(2)
+  )
+)
+
+Puts Cat(
+  Str("id[1 | 2] => ")
+  Ap(
+    Var(id)
+    Chc(
+      Num(1)
+      Num(2)
+    )
+  )
+)
+
+Assn  join Fun(
+  a, 
+ =>
+    Fun(
+      b, 
+ =>
+        Cat(
+          Var(a)
+          Var(b)
+        )
+    )
+)
+
+Assn  prepend-x Ap(
+  Var(join)
+  Str("x")
+)
+
+Puts Cat(
+  Str("prepend-x['y'] => ")
+  Ap(
+    Var(prepend-x)
+    Str("y")
+  )
+)
+
+Assn  prepend-a-or-b Ap(
+  Var(join)
+  Chc(
+    Str("a")
+    Str("b")
+  )
+)
+
+Puts Cat(
+  Str("prepend-a-or-b['y'] => ")
+  Ap(
+    Var(prepend-a-or-b)
+    Str("y")
+  )
+)
+

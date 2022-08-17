@@ -1,0 +1,7 @@
+# generated for 7381fae3eebf5951789de7f3037e86358174a88a
+---
+"0": "id['y'] => y\nconst[1, 2] => 2\nid[1 | 2] => 2\nprepend-x['y'] => xy\nprepend-a-or-b['y'] => ay"
+"2": "id['y'] => y\nconst[1, 2] => 2\nid[1 | 2] => 1\nprepend-x['y'] => xy\nprepend-a-or-b['y'] => ay"
+"4": "id['y'] => y\nconst[1, 2] => 2\nid[1 | 2] => 2\nprepend-x['y'] => xy\nprepend-a-or-b['y'] => by"
+"5": "id['y'] => y\nconst[1, 2] => 2\nid[1 | 2] => 1\nprepend-x['y'] => xy\nprepend-a-or-b['y'] => by"
+
