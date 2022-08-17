@@ -104,30 +104,37 @@ Matzo offers a handful of other data types in addition to strings. Matzo is dyna
 
 Applying functions is done using parameter lists contained in square brackets. That is to say, to apply the `to-upper` function to the string `"foo"`, you'd write `to-upper["foo"]`.
 
-All functions are defined as anonymous functions and can optionally feature definition-by-cases. A simple function which just returns its argument looks like this:
+The simplest way to define a function is using the `fn` keyword. Functions define their parameters within square brackets and their body after a `=>` symbol.
 
 ```
-id := { [x] => x };
+fn id[x] => x;
 ```
 
-In order to define a function by cases, you can separate individual cases with `;`.
+In order to define a function by cases, you need to surround the body with curly braces and separate individual cases with `;`. (The last `;` in the body is optional, and can be included or omitted.)
 
 ```
-if := { [True,  x, _] => x
-      ; [False, _, y] => y
-      };
+fn if {
+  [True,  x, _] => x;
+  [False, _, y] => y;
+};
+```
+
+You also can create inline anonymous functions by using the `fn` syntax. Unlike the top-level variation, curly braces for inline functions are _mandatory_ and cannot be omitted, even for functions without multiple cases.
+
+```
+const := fn { [_, y] => y};
 ```
 
 It is a runtime error if no case matches.
 
 ```
->>> {[A] => 1; [B] => 2}[C]
+>>> fn {[A] => 1; [B] => 2}[C]
 error: No pattern matched C
-  1 |{[A] => 1; [B] => 2}[C]
-     ^^^^^^^^^^^^^^^^^^^^
+  1 |fn {[A] => 1; [B] => 2}[C]
+     ^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
-Matzo does not permit nullary (i.e. zero-argument) functions.
+Matzo does not permit nullary (i.e. zero-argument) functions: because Matzo is lazy-by-default, zero-argument functions are redundant.
 
 ### Provided functions
 
@@ -174,7 +181,7 @@ word := tuple/flatten[tuple/rep[2..4, syll]];
 Now, we define a function called `orthography` which takes a IPA string and replaces it with the orthographic equivalent. We also allow most of the letters to remain unchanged, but the four IPA letters are replaced with corresponding letters in the Latin alphabet.
 
 ```
-orthography := {
+fn orthography {
   ["ʃ"] => "sh";
   ["ŋ"] => "ng";
   ["ɾ"] => "r";
