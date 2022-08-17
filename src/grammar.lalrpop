@@ -61,6 +61,15 @@ pub Stmt: Stmt = {
           loc: cs.loc,
         },
       }),
+    "fn" <name:Name> <case:Located<FunCase>> =>
+      Stmt::Assn(Binding {
+        fixed: true,
+        name,
+        expr: Located {
+          item: ast.add_expr(Expr::Fun(vec![case.item])),
+          loc: case.loc,
+        },
+      }),
     <binding:Binding> => Stmt::Assn(binding),
     "fix" <Name> => Stmt::Fix(<>),
 };

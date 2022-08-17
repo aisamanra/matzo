@@ -39,7 +39,7 @@ Puts Cat(
   )
 )
 
-Assn  join Fun(
+Assn fixed join Fun(
   a, 
  =>
     Fun(
@@ -78,6 +78,31 @@ Puts Cat(
   Ap(
     Var(prepend-a-or-b)
     Str("y")
+  )
+)
+
+Assn fixed is-X Fun(
+  X, 
+ =>
+    Str("yes")
+  _, 
+ =>
+    Str("no")
+)
+
+Puts Cat(
+  Str("is-X[X] => ")
+  Ap(
+    Var(is-X)
+    Lit(Atom(X))
+  )
+)
+
+Puts Cat(
+  Str("is-X[Y] => ")
+  Ap(
+    Var(is-X)
+    Lit(Atom(Y))
   )
 )
 

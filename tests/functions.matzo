@@ -1,23 +1,26 @@
 (* basic functions *)
-fn id {
-  [x] => x
-};
+fn id[x] => x;
 puts "id['y'] => " id['y'];
 
-fn const {
-  [_, y] => y
-};
+fn const[_, y] => y;
 puts "const[1, 2] => " const[1, 2];
 
 (* non-determinism should work in functions *)
 puts "id[1 | 2] => " id[1 | 2];
 
 (* closures should work *)
-join := fn {[a] => fn {[b] => a b}};
+fn join[a] => fn {[b] => a b};
 prepend-x := join['x'];
 puts "prepend-x['y'] => " prepend-x['y'];
 
 (* closed-over expressions should retain non-determinism *)
-
 prepend-a-or-b := join['a' | 'b'];
 puts "prepend-a-or-b['y'] => " prepend-a-or-b['y'];
+
+(* pattern-matching should also work *)
+fn is-X {
+  [X] => "yes";
+  [_] => "no";
+};
+puts "is-X[X] => " is-X[X];
+puts "is-X[Y] => " is-X[Y];
