@@ -211,7 +211,7 @@ pub Case: Case = {
 };
 
 pub FunCases: Vec<Case> = {
-    <mut cs:(<FunCase> ";")*> <c:FunCase> => {
+    <mut cs:(<FunCase> ";")*> <c:FunCase> ";"? => {
         cs.push(c);
         cs
     }

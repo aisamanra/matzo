@@ -1,7 +1,7 @@
 fn isZero { [Z] => True; [<S,_>] => False };
 fn add {
   [Z]     => fn { [y] => y };
-  [<S,x>] => fn { [y] => add[x][<S,y>] }
+  [<S,x>] => fn { [y] => add[x][<S,y>] };
 };
 incr := add[<S,Z>];
 
@@ -10,7 +10,7 @@ four := <S,<S,<S,<S,Z>>>>;
 
 fn if {
   [True]  => fn { [x] => fn { [_] => x } };
-  [False] => fn { [_] => fn { [y] => y } }
+  [False] => fn { [_] => fn { [y] => y } };
 };
 fn minusOne { [Z] => Z; [<S,x>] => x };
 
