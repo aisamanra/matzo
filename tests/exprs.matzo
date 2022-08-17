@@ -23,5 +23,5 @@ puts x..y;
 puts f[x];
 
 (* lambdas *)
-puts { [x] => x };
-puts { [True] => "yes" ; [False] => "no" };
+puts fn { [x] => x };
+puts fn { [True] => "yes" ; [False] => "no" };

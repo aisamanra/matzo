@@ -31,6 +31,7 @@ extern {
         "let" => Token::Let,
         "in" => Token::In,
         "fix" => Token::Fix,
+        "fn" => Token::Fn,
         "record" => Token::Record,
         "var" => Token::Var(<&'input str>),
         "atom" => Token::Atom(<&'input str>),
@@ -51,6 +52,15 @@ pub Stmts: Vec<Stmt> = {
 
 pub Stmt: Stmt = {
     "puts" <Located<Expr>> => Stmt::Puts(<>),
+    "fn" <name:Name> "{" <cs:Located<FunCases>> "}" =>
+      Stmt::Assn(Binding {
+        fixed: true,
+        name,
+        expr: Located {
+          item: ast.add_expr(Expr::Fun(cs.item)),
+          loc: cs.loc,
+        },
+      }),
     <binding:Binding> => Stmt::Assn(binding),
     "fix" <Name> => Stmt::Fix(<>),
 };
@@ -136,7 +146,7 @@ pub Leaf: ExprId = {
     },
     "let" <bindings:Bindings> "in" "{" <expr:Located<Expr>> "}" =>
         ast.add_expr(Expr::Let(bindings, expr)),
-    "{" <cs:FunCases> "}" =>
+    "fn" "{" <cs:FunCases> "}" =>
         ast.add_expr(Expr::Fun(cs)),
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),

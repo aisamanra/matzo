@@ -7,7 +7,7 @@ syll := tuple/flatten[cons, rime];
 
 word := tuple/flatten[tuple/rep[2..4, syll]];
 
-orthography := {
+fn orthography {
   ["ʃ"] => "sh";
   ["ŋ"] => "ng";
   ["ɾ"] => "r";

@@ -1,15 +1,18 @@
-isZero := { [Z] => True; [<S,_>] => False };
-add := { [Z]     => { [y] => y }
-       ; [<S,x>] => { [y] => add[x][<S,y>] } };
+fn isZero { [Z] => True; [<S,_>] => False };
+fn add {
+  [Z]     => fn { [y] => y };
+  [<S,x>] => fn { [y] => add[x][<S,y>] }
+};
 incr := add[<S,Z>];
 
 two  := <S,<S,Z>>;
 four := <S,<S,<S,<S,Z>>>>;
 
-if := { [True]  => { [x] => { [_] => x } }
-      ; [False] => { [_] => { [y] => y } }
-      };
-minusOne := { [Z] => Z; [<S,x>] => x };
+fn if {
+  [True]  => fn { [x] => fn { [_] => x } };
+  [False] => fn { [_] => fn { [y] => y } }
+};
+fn minusOne { [Z] => Z; [<S,x>] => x };
 
 puts "S is " S;
 puts "Z is " Z;
