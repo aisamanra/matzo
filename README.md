@@ -154,6 +154,34 @@ Matzo has a handful of functions which help writing certain kinds of programs. T
 - `tuple/len[tup]` returns the number of elements in the tuple `tup`.
 - `tuple/join[tup]` appends the elements of `tup` into a single string. This function takes an optional second argument, as well, so `tuple/join[tup, str]` appents the elements of `tup` separated by copies of `str` into a single string.
 
+### Pattern-matching
+
+Patterns in both function definitions and `case` expressions work identically. The following patterns are allowed:
+- Any expression can be matched by a variable name, so the function `fn {[var] => <Yes, var>; [_] => No}` will never return `No`: if it's called with a single argument, that argument will be bound to `var` and the function will return `<Yes, ...>` where `...` is replaced by the function's argument.
+- If the argument is not used, it can be bound to the wildcard `_`, which discards it. `fn {[_] => Yes; [_] => No}` will never return `No`, because the wildcard will match any argument passed to it.
+- Literals—including atoms, numbers, and strings—will attempt to match against themselves. Identical strings, atoms, or numbers will successfully match, and will fail a pattern-match against anything else.
+- Pattern-matching against a tuple will recursively bind patterns within the tuple itself: for example, the pattern `<a, b, c>` will bind against tuples of length 3, binding the first element to `a`, the second one to `b`, and the third one to `c`. You can also against just the beginning of arbitrary-length tuples: the pattern `<a, b, ..>` will match tuples whose length is 2 or more and will bind the first element to `a` and the second one to `b`. If you'd like to bind the _rest_ of the tuple to a name, you can do that by including a variable name after the final `..`: the pattern `<a, b, ..c>` will match tuples whose length is 2 or more and will bind the first element to `a`, the second one to `b`, and a (possibly empty) tuple containing `len-2` elements to `c`.
+- Pattern-matching against a record works similarly to pattern-matching against a tuple, except names are used instead of positions. Keep in mind that wildcard patterns work in the same way. This means that the pattern `{x: a}` will pattern-match against a record that contains _only_ a single field `x` and will bind the value of that field to `a`. If you want to match against any record that contains a field `x`, you can use the pattern `{x: a, ..}`, and you can get access to the rest of the record (not including the fields already matched) using the pattern `{x: a, ..b}`.
+
+These can of course be used recursively, so a function like
+
+```
+fn sum-all {
+  [<{x: n, y: m}, ..rest>] => add[add[n, m], sum-all[rest]];
+  [<>] => 0;
+}
+```
+
+will take tuples whose elements are records containing _only_ fields `x` and `y` and sum the values of those fields together for the entire tuple.
+
+It's also worth noting how this interacts with non-determinism: what happens when we try to write something like
+
+```
+(fn {[<A, x>] => "A plus " x x; [<B, x>] => "B plus " x x})[<A | B, 1 | 2>]
+```
+
+where the argument to the function is random? Matzo will always keep random choices consistent between branches, but _only if a branch attempts to make a choice based on a random value_. So, in the above case, we are branching on a 2-tuple whose first element might be either `A` or `B`, and whose second element might be either `1` or `2`. When we try to find out if the first branch matches, it first checks to see if the expression is a 2-tuple, and then checks to see if the first element of the tuple is `A` or not. As soon as that second check happens, Matzo will "fix" the first element to either `A` (in which case the branch matches) or `B` (in which case the branch fails, and we go on to the second branch). However, because nothing pattern-matched on `x`, that value is still lazy. If we have to fall back to the second branch, then we _don't_ try to re-roll the first element of the tuple: that's already been fixed by the first branch, but yet again, the second branch hasn't said anything about `x`, so that remains random.
+
 
 ### A more advanced example
 
