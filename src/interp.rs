@@ -8,7 +8,7 @@ use crate::{grammar, lexer};
 
 use anyhow::{bail, Error};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::io;
 use std::rc::Rc;
@@ -663,18 +663,66 @@ impl State {
             // tuples match if the thunk evaluates to a tuple of the
             // same size, and if all the patterns in the tuple match
             // the thunks in the expression
-            Pat::Tup(pats) => {
+            Pat::Tup(pats, rest) => {
                 if let Thunk::Value(Value::Tup(thunks)) = scrut {
-                    if pats.len() != thunks.len() {
-                        return Ok(false);
+                    match rest {
+                        RowPat::NoRest => {
+                            if pats.len() != thunks.len() {
+                                return Ok(false);
+                            }
+                        }
+                        _ => {
+                            if pats.len() > thunks.len() {
+                                return Ok(false);
+                            }
+                        }
                     }
 
-                    for (p, t) in pats.iter().zip(thunks) {
+                    for (p, t) in pats.iter().zip(thunks.iter_mut()) {
                         if !self.match_pat(p, t, bindings)? {
                             return Ok(false);
                         }
                     }
+
+                    if let RowPat::BoundRest(name) = rest {
+                        let mut rest: Vec<Thunk> = Vec::new();
+                        for t in thunks.iter().skip(pats.len()) {
+                            rest.push(t.clone());
+                        }
+                        bindings.push((*name, Thunk::Value(Value::Tup(rest))));
+                    }
                     Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+
+            Pat::Rec(fields, rest) => {
+                if let Thunk::Value(Value::Record(rec)) = scrut {
+                    let mut matched_fields = BTreeSet::new();
+                    for field in fields.iter() {
+                        if let Some(thunk) = rec.get_mut(&field.name.item) {
+                            if !self.match_pat(&field.pat, thunk, bindings)? {
+                                return Ok(false);
+                            }
+                            matched_fields.insert(field.name.item);
+                        } else {
+                            return Ok(false);
+                        }
+                    }
+
+                    match rest {
+                        RowPat::NoRest => Ok(rec.len() - matched_fields.len() == 0),
+                        RowPat::UnboundRest => Ok(true),
+                        RowPat::BoundRest(name) => {
+                            let mut rest = rec.clone();
+                            for matched in matched_fields.iter() {
+                                let _ = rest.remove(matched);
+                            }
+                            bindings.push((*name, Thunk::Value(Value::Record(rest))));
+                            Ok(true)
+                        }
+                    }
                 } else {
                     Ok(false)
                 }
