@@ -265,6 +265,9 @@ pub FieldPat: FieldPat = {
     <name:Name> ":" <pat:Pat> => FieldPat {
       name, pat
     },
+    <name:Name> ":" => FieldPat {
+      name, pat: Pat::Var(name)
+    }
 };
 
 pub Literal: Literal = {
