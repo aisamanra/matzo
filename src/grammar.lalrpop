@@ -236,11 +236,19 @@ pub Pat: Pat = {
     "_" => Pat::Wildcard,
     <Literal> => Pat::Lit(<>),
     <Name> => Pat::Var(<>),
-    "<" ">" => Pat::Tup(Vec::new()),
+
+    "<" ">" => Pat::Tup(Vec::new(), RowPat::NoRest),
     "<" <mut ps:(<Pat> ",")*> <p:Pat> ","? ">" => {
         ps.push(p);
-        Pat::Tup(ps)
+        Pat::Tup(ps, RowPat::NoRest)
     },
+    "<" <ps:(<Pat> ",")*> ".." ","? ">" => {
+        Pat::Tup(ps, RowPat::UnboundRest)
+    },
+    "<" <ps:(<Pat> ",")*> ".." <rest:Name> ","? ">" => {
+        Pat::Tup(ps, RowPat::BoundRest(rest))
+    },
+
     "{" <mut fs:(<FieldPat> ",")*> <f:FieldPat> ","? "}" => {
         fs.push(f);
         Pat::Rec(fs, RowPat::NoRest)

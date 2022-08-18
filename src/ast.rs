@@ -119,8 +119,8 @@ pub enum Pat {
     Wildcard,
     /// A literal (string, number, or atom)
     Lit(Literal),
-    /// A tuple of other patterns
-    Tup(Vec<Pat>),
+    /// A tuple of other patterns, perhaps with a catchall
+    Tup(Vec<Pat>, RowPat),
     /// A record pattern, perhaps with a catchall
     Rec(Vec<FieldPat>, RowPat),
 }
@@ -262,11 +262,20 @@ impl ASTArena {
             Pat::Var(n) => write!(f, "{}", &self[n.item]),
             Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[n.item]),
             Pat::Lit(lit) => write!(f, "{:?}", lit),
-            Pat::Tup(tup) => {
+            Pat::Tup(tup, row) => {
                 write!(f, "Tup( ")?;
                 for t in tup {
                     self.show_pat(t, f)?;
                     write!(f, " ")?;
+                }
+                match row {
+                    RowPat::NoRest => (),
+                    RowPat::UnboundRest => {
+                        write!(f, "...")?;
+                    }
+                    RowPat::BoundRest(n) => {
+                        write!(f, "..{}", &self[n.item])?;
+                    }
                 }
                 write!(f, ")")
             }

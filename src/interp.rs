@@ -663,16 +663,33 @@ impl State {
             // tuples match if the thunk evaluates to a tuple of the
             // same size, and if all the patterns in the tuple match
             // the thunks in the expression
-            Pat::Tup(pats) => {
+            Pat::Tup(pats, rest) => {
                 if let Thunk::Value(Value::Tup(thunks)) = scrut {
-                    if pats.len() != thunks.len() {
-                        return Ok(false);
+                    match rest {
+                        RowPat::NoRest => {
+                            if pats.len() != thunks.len() {
+                                return Ok(false);
+                            }
+                        }
+                        _ => {
+                            if pats.len() > thunks.len() {
+                                return Ok(false);
+                            }
+                        }
                     }
 
-                    for (p, t) in pats.iter().zip(thunks) {
+                    for (p, t) in pats.iter().zip(thunks.iter_mut()) {
                         if !self.match_pat(p, t, bindings)? {
                             return Ok(false);
                         }
+                    }
+
+                    if let RowPat::BoundRest(name) = rest {
+                        let mut rest: Vec<Thunk> = Vec::new();
+                        for t in thunks.iter().skip(pats.len()) {
+                            rest.push(t.clone());
+                        }
+                        bindings.push((*name, Thunk::Value(Value::Tup(rest))));
                     }
                     Ok(true)
                 } else {
