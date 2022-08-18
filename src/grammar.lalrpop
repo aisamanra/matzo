@@ -147,10 +147,17 @@ pub Leaf: ExprId = {
     },
     "<" <mut es:(<Located<Expr>> ",")*> <e:Located<Expr>> ">" => {
         if es.len() == 0 && e.item.nil() {
-            ast.add_expr(Expr::Tup(Vec::new()))
+            ast.add_expr(Expr::Tup(Vec::new(), None))
         } else {
             es.push(e);
-            ast.add_expr(Expr::Tup(es))
+            ast.add_expr(Expr::Tup(es, None))
+        }
+    },
+    "<" <es:(<Located<Expr>> ",")*> ".." <rest:Located<Expr>> ">" => {
+        if es.len() == 0  {
+            ast.add_expr(Expr::Tup(Vec::new(), Some(rest)))
+        } else {
+            ast.add_expr(Expr::Tup(es, Some(rest)))
         }
     },
     "{" <fields:(Field ",")*> <f:Field> ","? "}" => {
