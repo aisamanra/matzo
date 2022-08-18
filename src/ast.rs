@@ -123,6 +123,8 @@ pub enum Pat {
     Tup(Vec<Pat>, RowPat),
     /// A record pattern, perhaps with a catchall
     Rec(Vec<FieldPat>, RowPat),
+    /// Disjunctions
+    Any(Vec<Pat>),
 }
 
 /// A record field as used in a pattern
@@ -294,6 +296,14 @@ impl ASTArena {
                     RowPat::BoundRest(n) => {
                         write!(f, "..{}", &self[n.item])?;
                     }
+                }
+                write!(f, ")")
+            }
+            Pat::Any(choices) => {
+                write!(f, "Any( ")?;
+                for p in choices {
+                    self.show_pat(p, f)?;
+                    write!(f, " ")?;
                 }
                 write!(f, ")")
             }
