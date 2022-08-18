@@ -491,6 +491,24 @@ impl State {
                 };
                 self.hnf(thunk)
             }
+
+            Expr::With(expr, fields) => {
+                let mut record = if let Value::Record(rec) = self.eval(*expr, env)? {
+                    rec
+                } else {
+                    return Err(MatzoError::new(
+                        expr_ref.loc,
+                        "{} is not a record and cannot be updated with record update syntax"
+                            .to_string(),
+                    ));
+                };
+
+                for f in fields {
+                    record.insert(f.name.item, Thunk::Expr(f.expr, env.clone()));
+                }
+
+                Ok(Value::Record(record))
+            }
         }
     }
 

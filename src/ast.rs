@@ -64,6 +64,8 @@ pub enum Expr {
     Case(ExprRef, Vec<Case>),
     /// Accessing the field of a record
     Access(ExprRef, Name),
+    ///Updating records
+    With(ExprRef, Vec<Field>),
     /// An empty tree. (We can't write this, but we desugar into it
     /// sometimes)
     Nil,
@@ -435,6 +437,20 @@ impl ASTArena {
                 self.show_expr(&self[expr.item], f, depth + 2)?;
                 self.indent(f, depth)?;
                 writeln!(f, "{}", &self[field.item])
+            }
+
+            Expr::With(expr, fields) => {
+                writeln!(f, "With(")?;
+                self.indent(f, depth)?;
+                self.show_expr(&self[expr.item], f, depth + 2)?;
+                for e in fields {
+                    self.indent(f, depth + 2)?;
+                    writeln!(f, "{}:", &self[e.name.item])?;
+                    self.indent(f, depth + 2)?;
+                    self.show_expr(&self[e.expr], f, depth + 2)?;
+                }
+                self.indent(f, depth)?;
+                writeln!(f, ")")
             }
         }
     }

@@ -120,6 +120,9 @@ pub enum Token<'a> {
     #[token("fn")]
     Fn,
 
+    #[token("with")]
+    With,
+
     #[regex(r"\p{Ll}(\pL|[0-9_/-])*")]
     Var(&'a str),
 
@@ -178,6 +181,7 @@ impl<'a> Token<'a> {
             Token::In => "`in`".to_string(),
             Token::Fix => "`fix`".to_string(),
             Token::Fn => "`fn`".to_string(),
+            Token::With => "`with`".to_string(),
 
             Token::Error => "error".to_string(),
         }
