@@ -678,6 +678,16 @@ impl State {
                 }
             }
 
+            Pat::Any(pats) => {
+                for p in pats {
+                    if self.match_pat(p, scrut, bindings)? {
+                        return Ok(true);
+                    }
+                }
+
+                Ok(false)
+            }
+
             // tuples match if the thunk evaluates to a tuple of the
             // same size, and if all the patterns in the tuple match
             // the thunks in the expression

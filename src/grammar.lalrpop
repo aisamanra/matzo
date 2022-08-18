@@ -243,6 +243,11 @@ pub Pat: Pat = {
     <Literal> => Pat::Lit(<>),
     <Name> => Pat::Var(<>),
 
+    "(" <mut ps:(<Pat> "|")*> <p:Pat> ")" => {
+      ps.push(p);
+      Pat::Any(ps)
+    },
+
     "<" ">" => Pat::Tup(Vec::new(), RowPat::NoRest),
     "<" <mut ps:(<Pat> ",")*> <p:Pat> ","? ">" => {
         ps.push(p);
