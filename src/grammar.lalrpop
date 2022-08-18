@@ -237,9 +237,25 @@ pub Pat: Pat = {
     <Literal> => Pat::Lit(<>),
     <Name> => Pat::Var(<>),
     "<" ">" => Pat::Tup(Vec::new()),
-    "<" <mut ps:(<Pat> ",")*> <p:Pat> ">" => {
+    "<" <mut ps:(<Pat> ",")*> <p:Pat> ","? ">" => {
         ps.push(p);
         Pat::Tup(ps)
+    },
+    "{" <mut fs:(<FieldPat> ",")*> <f:FieldPat> ","? "}" => {
+        fs.push(f);
+        Pat::Rec(fs, RowPat::NoRest)
+    },
+    "{" <fs:(<FieldPat> ",")*> ".." ","? "}" => {
+        Pat::Rec(fs, RowPat::UnboundRest)
+    },
+    "{" <fs:(<FieldPat> ",")*> ".." <rest:Name> ","? "}" => {
+        Pat::Rec(fs, RowPat::BoundRest(rest))
+    },
+};
+
+pub FieldPat: FieldPat = {
+    <name:Name> ":" <pat:Pat> => FieldPat {
+      name, pat
     },
 };
 

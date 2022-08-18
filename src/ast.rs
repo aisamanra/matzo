@@ -121,6 +121,28 @@ pub enum Pat {
     Lit(Literal),
     /// A tuple of other patterns
     Tup(Vec<Pat>),
+    /// A record pattern, perhaps with a catchall
+    Rec(Vec<FieldPat>, RowPat),
+}
+
+/// A record field as used in a pattern
+#[derive(Debug, Clone)]
+pub struct FieldPat {
+    pub name: Name,
+    pub pat: Pat,
+}
+
+/// This represents the "leftover" part of a record pattern: what do
+/// we do with the rest of the record after we've matched everything
+/// else?
+#[derive(Debug, Clone)]
+pub enum RowPat {
+    /// Fail if the record has more fields
+    NoRest,
+    /// Ignore the other fields
+    UnboundRest,
+    /// Bind the record modulo the matched fields to a new name
+    BoundRest(Name),
 }
 
 /// A single element in a choice, with an optional weight (which
@@ -248,6 +270,24 @@ impl ASTArena {
                 }
                 write!(f, ")")
             }
+            Pat::Rec(fields, row) => {
+                write!(f, "Rec(")?;
+                for fld in fields {
+                    write!(f, "{}:", &self[fld.name.item])?;
+                    self.show_pat(&fld.pat, f)?;
+                    write!(f, " ")?;
+                }
+                match row {
+                    RowPat::NoRest => (),
+                    RowPat::UnboundRest => {
+                        write!(f, "...")?;
+                    }
+                    RowPat::BoundRest(n) => {
+                        write!(f, "..{}", &self[n.item])?;
+                    }
+                }
+                write!(f, ")")
+            }
         }
     }
 
@@ -296,7 +336,8 @@ impl ASTArena {
                 writeln!(f, "Record(")?;
                 for e in fields {
                     self.indent(f, depth + 2)?;
-                    writeln!(f, "{}", &self[e.name.item])?;
+                    writeln!(f, "{}:", &self[e.name.item])?;
+                    self.indent(f, depth + 2)?;
                     self.show_expr(&self[e.expr], f, depth + 2)?;
                 }
                 self.indent(f, depth)?;

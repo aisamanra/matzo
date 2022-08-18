@@ -8,7 +8,7 @@ use crate::{grammar, lexer};
 
 use anyhow::{bail, Error};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::io;
 use std::rc::Rc;
@@ -675,6 +675,37 @@ impl State {
                         }
                     }
                     Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+
+            Pat::Rec(fields, rest) => {
+                if let Thunk::Value(Value::Record(rec)) = scrut {
+                    let mut matched_fields = BTreeSet::new();
+                    for field in fields.iter() {
+                        if let Some(thunk) = rec.get_mut(&field.name.item) {
+                            if !self.match_pat(&field.pat, thunk, bindings)? {
+                                return Ok(false);
+                            }
+                            matched_fields.insert(field.name.item);
+                        } else {
+                            return Ok(false);
+                        }
+                    }
+
+                    match rest {
+                        RowPat::NoRest => Ok(rec.len() - matched_fields.len() == 0),
+                        RowPat::UnboundRest => Ok(true),
+                        RowPat::BoundRest(name) => {
+                            let mut rest = rec.clone();
+                            for matched in matched_fields.iter() {
+                                let _ = rest.remove(matched);
+                            }
+                            bindings.push((*name, Thunk::Value(Value::Record(rest))));
+                            Ok(true)
+                        }
+                    }
                 } else {
                     Ok(false)
                 }

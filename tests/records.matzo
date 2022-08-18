@@ -16,3 +16,38 @@ puts "after fixing:";
 puts r.x;
 puts r.x;
 puts r.x;
+
+
+(* record patterns: without a wildcard, must match
+ * the whole record *)
+puts "full record patterns";
+fn foo {
+  [{x: x}] => "Got: " x;
+  [_] => No;
+};
+puts "foo[{y: 'A'}] => " foo[{y: 'A'}];
+puts "foo[{x: 'B'}] => " foo[{x: 'B'}];
+puts "foo[{x: 'A', y: 'B'}] => " foo[{x: 'B', y: 'A'}];
+
+(* record patterns: without trailing .., can match
+ * records of any size *)
+puts "rest";
+fn bar {
+  [{x: x, ..}] => "Got: " x;
+  [_] => No;
+};
+puts "bar[{y: 'A'}] => " bar[{y: 'A'}];
+puts "bar[{x: 'B'}] => " bar[{x: 'B'}];
+puts "bar[{x: 'A', y: 'B'}] => " bar[{x: 'B', y: 'A'}];
+
+(* record patterns: with trailing .. and variable, will
+ * stash record into variable as well *)
+puts "row binding";
+fn baz {
+  [{x: x, ..rest}] =>
+    "Got: " x " with " rest " leftover";
+  [_] => No;
+};
+puts "baz[{y: 'A'}] => " baz[{y: 'A'}];
+puts "baz[{x: 'B'}] => " baz[{x: 'B'}];
+puts "baz[{x: 'A', y: 'B'}] => " baz[{x: 'B', y: 'A'}];

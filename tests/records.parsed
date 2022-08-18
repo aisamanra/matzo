@@ -1,12 +1,12 @@
 Assn  r Record(
-  x
-Chc(
+  x:
+  Chc(
     Str("a")
     Str("b")
     Str("c")
   )
-  y
-Chc(
+  y:
+  Chc(
     Num(22)
     Num(33)
     Num(44)
@@ -46,4 +46,154 @@ x
 Puts Access(
 Var(r)
 x
+
+Puts Str("full record patterns")
+
+Assn fixed foo Fun(
+  Rec(x:x ), 
+ =>
+    Cat(
+      Str("Got: ")
+      Var(x)
+    )
+  _, 
+ =>
+    Lit(Atom(No))
+)
+
+Puts Cat(
+  Str("foo[{y: 'A'}] => ")
+  Ap(
+    Var(foo)
+    Record(
+      y:
+      Str("A")
+    )
+  )
+)
+
+Puts Cat(
+  Str("foo[{x: 'B'}] => ")
+  Ap(
+    Var(foo)
+    Record(
+      x:
+      Str("B")
+    )
+  )
+)
+
+Puts Cat(
+  Str("foo[{x: 'A', y: 'B'}] => ")
+  Ap(
+    Var(foo)
+    Record(
+      x:
+      Str("B")
+      y:
+      Str("A")
+    )
+  )
+)
+
+Puts Str("rest")
+
+Assn fixed bar Fun(
+  Rec(x:x ...), 
+ =>
+    Cat(
+      Str("Got: ")
+      Var(x)
+    )
+  _, 
+ =>
+    Lit(Atom(No))
+)
+
+Puts Cat(
+  Str("bar[{y: 'A'}] => ")
+  Ap(
+    Var(bar)
+    Record(
+      y:
+      Str("A")
+    )
+  )
+)
+
+Puts Cat(
+  Str("bar[{x: 'B'}] => ")
+  Ap(
+    Var(bar)
+    Record(
+      x:
+      Str("B")
+    )
+  )
+)
+
+Puts Cat(
+  Str("bar[{x: 'A', y: 'B'}] => ")
+  Ap(
+    Var(bar)
+    Record(
+      x:
+      Str("B")
+      y:
+      Str("A")
+    )
+  )
+)
+
+Puts Str("row binding")
+
+Assn fixed baz Fun(
+  Rec(x:x ..rest), 
+ =>
+    Cat(
+      Str("Got: ")
+      Var(x)
+      Str(" with ")
+      Var(rest)
+      Str(" leftover")
+    )
+  _, 
+ =>
+    Lit(Atom(No))
+)
+
+Puts Cat(
+  Str("baz[{y: 'A'}] => ")
+  Ap(
+    Var(baz)
+    Record(
+      y:
+      Str("A")
+    )
+  )
+)
+
+Puts Cat(
+  Str("baz[{x: 'B'}] => ")
+  Ap(
+    Var(baz)
+    Record(
+      x:
+      Str("B")
+    )
+  )
+)
+
+Puts Cat(
+  Str("baz[{x: 'A', y: 'B'}] => ")
+  Ap(
+    Var(baz)
+    Record(
+      x:
+      Str("B")
+      y:
+      Str("A")
+    )
+  )
+)
 
