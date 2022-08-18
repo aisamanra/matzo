@@ -1,0 +1,8 @@
+(* choices within tuples aren't fixed *)
+tup := <1|2, 1|2>;
+puts tup ";" tup;
+fix tup;
+puts tup ";" tup;
+
+(* conses *)
+puts <0, ..tup>;
