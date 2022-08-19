@@ -7,36 +7,41 @@ extern {
     type Location = usize;
     type Error = LexerError;
 
-    enum Token<'input> {
-        "<" => Token::LAngle,
-        ">" => Token::RAngle,
-        "(" => Token::LPar,
-        ")" => Token::RPar,
-        "{" => Token::LCurl,
-        "}" => Token::RCurl,
-        "[" => Token::LBrac,
-        "]" => Token::RBrac,
-        "|" => Token::Pipe,
-        ":" => Token::Colon,
-        "," => Token::Comma,
-        ";" => Token::Semi,
-        "." => Token::Dot,
-        "_" => Token::Underscore,
-        ".." => Token::DotDot,
-        "=>" => Token::Arrow,
-        ":=" => Token::Assn,
-        "::=" => Token::LitAssn,
-        "puts" => Token::Puts,
-        "case" => Token::Case,
-        "let" => Token::Let,
-        "in" => Token::In,
-        "fix" => Token::Fix,
-        "fn" => Token::Fn,
-        "with" => Token::With,
-        "var" => Token::Var(<&'input str>),
-        "atom" => Token::Atom(<&'input str>),
-        "num" => Token::Num(<i64>),
-        "str" => Token::Str(<String>)
+    enum Wrap<'input> {
+        "<" => Wrap::R(Token::LAngle),
+        ">" => Wrap::R(Token::RAngle),
+        "(" => Wrap::R(Token::LPar),
+        ")" => Wrap::R(Token::RPar),
+        "{" => Wrap::R(Token::LCurl),
+        "}" => Wrap::R(Token::RCurl),
+        "[" => Wrap::R(Token::LBrac),
+        "]" => Wrap::R(Token::RBrac),
+        "|" => Wrap::R(Token::Pipe),
+        ":" => Wrap::R(Token::Colon),
+        "," => Wrap::R(Token::Comma),
+        ";" => Wrap::R(Token::Semi),
+        "." => Wrap::R(Token::Dot),
+        "_" => Wrap::R(Token::Underscore),
+        ".." => Wrap::R(Token::DotDot),
+        "=>" => Wrap::R(Token::Arrow),
+        ":=" => Wrap::R(Token::Assn),
+        "::=" => Wrap::R(Token::LitAssn),
+        "puts" => Wrap::R(Token::Puts),
+        "case" => Wrap::R(Token::Case),
+        "let" => Wrap::R(Token::Let),
+        "in" => Wrap::R(Token::In),
+        "fix" => Wrap::R(Token::Fix),
+        "fn" => Wrap::R(Token::Fn),
+        "with" => Wrap::R(Token::With),
+        "var" => Wrap::R(Token::Var(<&'input str>)),
+        "atom" => Wrap::R(Token::Atom(<&'input str>)),
+        "num" => Wrap::R(Token::Num(<i64>)),
+        "str" => Wrap::R(Token::Str(<String>)),
+        "`[" => Wrap::R(Token::FStringStart),
+
+        "fragment" => Wrap::F(FStringToken::Text(<String>)),
+        "fvar" => Wrap::F(FStringToken::Var(<&'input str>)),
+        "`]" => Wrap::F(FStringToken::FStringEnd),
     }
 }
 
@@ -172,6 +177,16 @@ pub Leaf: ExprId = {
     "case" <e:Located<Expr>> "in" "{" <cs:Cases> "}" =>
         ast.add_expr(Expr::Case(e, cs)),
     "(" <e:Expr> ")" => e,
+    "`[" <fs:(<Located<FStringFragment>>)*> "`]" =>
+      ast.add_expr(Expr::Cat(fs)),
+};
+
+pub FStringFragment: ExprId = {
+  "fragment" => ast.add_expr(Expr::Lit(Literal::Str(<>))),
+  <loc:Located<"fvar">> => {
+    let var = loc.map(|str| ast.add_string(str));
+    ast.add_expr(Expr::Var(var))
+  },
 };
 
 pub Field: Field = {

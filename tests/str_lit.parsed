@@ -23,3 +23,11 @@ Puts Cat(
   Str("\n\t\r")
 )
 
+Assn  x Num(5)
+
+Puts Cat(
+  Str("foo ")
+  Var(x)
+  Str(" bar")
+)
+

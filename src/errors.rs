@@ -49,7 +49,7 @@ impl MatzoError {
 
     pub fn from_parse_error(
         file: FileRef,
-        err: lalrpop_util::ParseError<usize, lexer::Token, lexer::LexerError>,
+        err: lalrpop_util::ParseError<usize, lexer::Wrap, lexer::LexerError>,
     ) -> Self {
         match err {
             lalrpop_util::ParseError::User { error } => MatzoError::new(

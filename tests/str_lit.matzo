@@ -13,3 +13,7 @@ puts 'this\nthat' "one\ntwo";
 
 (* various escapes *)
 puts '\n\t\r' "\n\t\r";
+
+(* interpolated string literals *)
+x := 5;
+puts `foo ,x bar`;
