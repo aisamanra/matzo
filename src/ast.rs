@@ -48,7 +48,7 @@ pub enum Expr {
     Lit(Literal),
 
     /// A tuple of expressions
-    Tup(Vec<ExprRef>),
+    Tup(Vec<ExprRef>, Option<ExprRef>),
     /// A record with named fields
     Record(Vec<Field>),
 
@@ -343,10 +343,15 @@ impl ASTArena {
                 writeln!(f, ")")
             }
 
-            Expr::Tup(expr) => {
+            Expr::Tup(expr, rest) => {
                 writeln!(f, "Tup(")?;
                 for e in expr {
                     self.indent(f, depth + 2)?;
+                    self.show_expr(&self[*e], f, depth + 2)?;
+                }
+                if let Some(e) = rest {
+                    self.indent(f, depth + 2)?;
+                    write!(f, "..")?;
                     self.show_expr(&self[*e], f, depth + 2)?;
                 }
                 self.indent(f, depth)?;

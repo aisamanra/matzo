@@ -105,7 +105,7 @@ fn main() {
         State::new()
     };
     for arg in opts.files {
-        let buf = std::fs::read_to_string(arg).unwrap();
+        let buf = std::fs::read_to_string(&arg).expect(&format!("Unable to read {}", arg));
         if let Err(err) = state.run(&buf) {
             eprintln!(
                 "{} {}",

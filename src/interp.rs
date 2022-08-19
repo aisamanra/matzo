@@ -383,13 +383,26 @@ impl State {
 
             // for a tuple, we return a tuple of thunks to begin with,
             // to make sure that the values contained within are
-            // appropriately lazy
-            Expr::Tup(values) => Ok(Value::Tup(
-                values
+            // appropriately lazy. We do need to be _somewhat_ strict
+            // in the `..rest` parameter, if it exists.
+            Expr::Tup(values, rest) => {
+                let mut new_values = values
                     .iter()
                     .map(|v| Thunk::Expr(*v, env.clone()))
-                    .collect::<Vec<Thunk>>(),
-            )),
+                    .collect::<Vec<Thunk>>();
+                if let Some(rest_expr) = rest {
+                    let rest = self.eval(*rest_expr, env)?;
+                    if let Value::Tup(rest) = rest {
+                        new_values.extend(rest);
+                    } else {
+                        return Err(MatzoError::new(
+                            rest_expr.loc,
+                            "Cannot append elements to a non-tuple.".to_string(),
+                        ));
+                    }
+                };
+                Ok(Value::Tup(new_values))
+            }
 
             Expr::Record(fields) => Ok(Value::Record(
                 fields

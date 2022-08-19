@@ -1,0 +1,30 @@
+Assn  tup Tup(
+  Chc(
+    Num(1)
+    Num(2)
+  )
+  Chc(
+    Num(1)
+    Num(2)
+  )
+)
+
+Puts Cat(
+  Var(tup)
+  Str(";")
+  Var(tup)
+)
+
+Fix tup
+
+Puts Cat(
+  Var(tup)
+  Str(";")
+  Var(tup)
+)
+
+Puts Tup(
+  Num(0)
+  ..Var(tup)
+)
+
