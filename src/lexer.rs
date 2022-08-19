@@ -227,11 +227,8 @@ impl<'a> FStringToken<'a> {
     }
 }
 
-pub enum WrappedLexer<'a> {
-    Regular(Lexer<'a, Token<'a>>),
-    FString(Lexer<'a, FStringToken<'a>>),
-}
-
+/// When we tokenize, we return `Wrap` values that contain different
+/// token types depending on what mode those tokens are discovered in.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Wrap<'a> {
     R(Token<'a>),
@@ -247,11 +244,22 @@ impl<'a> Wrap<'a> {
     }
 }
 
+/// A `WrappedLexer` contains a `Lexer<>` of some token, but we swap
+/// back and forth which one it contains based on mode. See the
+/// comments in the relevant `Iterator` implementation (on
+/// `MatzoLexer`) to understand why.
+pub enum WrappedLexer<'a> {
+    Regular(Lexer<'a, Token<'a>>),
+    FString(Lexer<'a, FStringToken<'a>>),
+}
+
+/// The actual iterator we use.
 struct MatzoLexer<'a> {
     mode: WrappedLexer<'a>,
 }
 
 impl<'a> MatzoLexer<'a> {
+    /// Return an iterator over the provided source.
     pub fn lex(src: &'a str) -> MatzoLexer<'a> {
         MatzoLexer {
             mode: WrappedLexer::Regular(Token::lexer(src)),
@@ -264,20 +272,34 @@ impl<'a> Iterator for MatzoLexer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.mode {
+            // If we're in the regular parsing mode (i.e. not inside
+            // an fstring)...
             WrappedLexer::Regular(inner) => {
+                // grab the next token
                 let result = inner.next();
                 let span = inner.span();
+                // if the next token starts an `FString`, then swap
+                // modes by taking the current lexer and converting it
+                // into one which tokenizes to `FStringToken` values
+                // instead.
                 if let Some(Token::FStringStart) = result {
                     self.mode = WrappedLexer::FString(inner.to_owned().morph());
                 }
+                // Return the wrapped token and the span
                 result.map(|tok| (Wrap::R(tok), span))
             }
+
+            // OTOH, if we're in the fstring parsing mode...
             WrappedLexer::FString(inner) => {
+                // grab the next token
                 let result = inner.next();
                 let span = inner.span();
+                // and if it marks the end of the string (i.e. it's
+                // another backtick) then swich the mode back
                 if let Some(FStringToken::FStringEnd) = result {
                     self.mode = WrappedLexer::Regular(inner.to_owned().morph());
                 }
+                // Return the wrapped token and span
                 result.map(|tok| (Wrap::F(tok), span))
             }
         }
@@ -330,33 +352,21 @@ mod test {
     #[test]
     fn fstring_test() {
         let mut lex = MatzoLexer::lex("puts `foo ,bar baz ,quux whatever`;");
-        assert_eq!(lex.next().map(|r| r.0), Some(Wrap::R(Token::Puts)));
-        assert_eq!(lex.next().map(|r| r.0), Some(Wrap::R(Token::FStringStart)));
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::Text("foo ".to_owned())))
-        );
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::Var("bar")))
-        );
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::Text(" baz ".to_owned())))
-        );
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::Var("quux")))
-        );
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::Text(" whatever".to_owned())))
-        );
-        assert_eq!(
-            lex.next().map(|r| r.0),
-            Some(Wrap::F(FStringToken::FStringEnd))
-        );
-        assert_eq!(lex.next().map(|r| r.0), Some(Wrap::R(Token::Semi)));
-        assert_eq!(lex.next().map(|r| r.0), None)
+        let expected = [
+            Wrap::R(Token::Puts),
+            Wrap::R(Token::FStringStart),
+            Wrap::F(FStringToken::Text("foo ".to_owned())),
+            Wrap::F(FStringToken::Var("bar")),
+            Wrap::F(FStringToken::Text(" baz ".to_owned())),
+            Wrap::F(FStringToken::Var("quux")),
+            Wrap::F(FStringToken::Text(" whatever".to_owned())),
+            Wrap::F(FStringToken::FStringEnd),
+            Wrap::R(Token::Semi),
+        ];
+
+        for e in expected {
+            assert_eq!(lex.next().map(|r| r.0), Some(e));
+        }
+        assert_eq!(lex.next(), None);
     }
 }
