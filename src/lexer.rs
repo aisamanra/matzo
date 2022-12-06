@@ -39,6 +39,14 @@ fn parse_escapes<'a>(src: &'a str) -> Option<String> {
                 Some('n') => buf.push('\n'),
                 Some('t') => buf.push('\t'),
                 Some('r') => buf.push('\r'),
+                Some('u') => {
+                    let a = as_hex(src.next()?)?;
+                    let b = as_hex(src.next()?)?;
+                    let c = as_hex(src.next()?)?;
+                    let d = as_hex(src.next()?)?;
+                    let res = a << 12 | b << 8 | c << 4 | d;
+                    buf.push(char::from_u32(res)?)
+                }
                 Some(c) => buf.push(c),
                 None => return None,
             }
@@ -47,6 +55,28 @@ fn parse_escapes<'a>(src: &'a str) -> Option<String> {
         }
     }
     Some(buf)
+}
+
+fn as_hex(chr: char) -> Option<u32> {
+    match chr {
+        '0' => Some(0),
+        '1' => Some(1),
+        '2' => Some(2),
+        '3' => Some(3),
+        '4' => Some(4),
+        '5' => Some(5),
+        '6' => Some(6),
+        '7' => Some(7),
+        '8' => Some(8),
+        '9' => Some(9),
+        'A' | 'a' => Some(10),
+        'B' | 'b' => Some(11),
+        'C' | 'c' => Some(12),
+        'D' | 'd' => Some(13),
+        'E' | 'e' => Some(14),
+        'F' | 'f' => Some(15),
+        _ => None,
+    }
 }
 
 fn parse_str<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
