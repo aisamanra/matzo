@@ -30,7 +30,14 @@ fn parse_num<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<i64> {
     slice.parse().ok()
 }
 
-fn parse_escapes<'a>(src: &'a str) -> Option<String> {
+enum StringLitError {
+    UnexpectedEndAfterBackslash,
+    NotAHexDigit(char),
+    NotEnoughHexDigits,
+    NotAValidChar(u32),
+}
+
+fn parse_escapes<'a>(src: &'a str) -> Result<String, StringLitError> {
     let mut buf = String::new();
     let mut src = src.chars();
     while let Some(c) = src.next() {
@@ -39,22 +46,52 @@ fn parse_escapes<'a>(src: &'a str) -> Option<String> {
                 Some('n') => buf.push('\n'),
                 Some('t') => buf.push('\t'),
                 Some('r') => buf.push('\r'),
+                Some('u') => {
+                    let a = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
+                    let b = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
+                    let c = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
+                    let d = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
+                    let res = a << 12 | b << 8 | c << 4 | d;
+                    buf.push(char::from_u32(res).ok_or(StringLitError::NotAValidChar(res))?);
+                }
                 Some(c) => buf.push(c),
-                None => return None,
+                None => return Err(StringLitError::UnexpectedEndAfterBackslash),
             }
         } else {
             buf.push(c);
         }
     }
-    Some(buf)
+    Ok(buf)
 }
 
-fn parse_str<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
+fn as_hex(chr: char) -> Result<u32, StringLitError> {
+    match chr {
+        '0' => Ok(0),
+        '1' => Ok(1),
+        '2' => Ok(2),
+        '3' => Ok(3),
+        '4' => Ok(4),
+        '5' => Ok(5),
+        '6' => Ok(6),
+        '7' => Ok(7),
+        '8' => Ok(8),
+        '9' => Ok(9),
+        'A' | 'a' => Ok(10),
+        'B' | 'b' => Ok(11),
+        'C' | 'c' => Ok(12),
+        'D' | 'd' => Ok(13),
+        'E' | 'e' => Ok(14),
+        'F' | 'f' => Ok(15),
+        _ => Err(StringLitError::NotAHexDigit(chr)),
+    }
+}
+
+fn parse_str<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Result<String, StringLitError> {
     let s = lex.slice();
     parse_escapes(&s[1..s.len() - 1])
 }
 
-fn parse_fragment<'a>(lex: &mut Lexer<'a, FStringToken<'a>>) -> Option<String> {
+fn parse_fragment<'a>(lex: &mut Lexer<'a, FStringToken<'a>>) -> Result<String, StringLitError> {
     parse_escapes(lex.slice())
 }
 
