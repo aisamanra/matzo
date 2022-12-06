@@ -34,6 +34,7 @@ serde = { version = "1.0", features = ["derive"] }
 clap = "2.33"
 serde_yaml = "0.8"
 dirs = "*"
+unicode-normalization = "*"
 
 [build-dependencies]
 vergen = "*"

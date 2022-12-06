@@ -12,6 +12,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 use std::io;
 use std::rc::Rc;
+use unicode_normalization::UnicodeNormalization;
 
 /// A `Callback` here is what we use for builtin functions: they take
 /// the state and the env along with a (non-empty) list of
@@ -260,7 +261,9 @@ impl State {
             Stmt::Puts(expr) => {
                 let val = self.eval(*expr, &None)?;
                 let val = self.force(val)?;
-                writeln!(output, "{}", val.to_string(&self.ast.borrow())).unwrap();
+                let raw_str = val.to_string(&self.ast.borrow());
+                let nfc: String = raw_str.nfc().collect();
+                writeln!(output, "{}", nfc).unwrap();
             }
 
             // Look up the provided name, and if it's not already

@@ -561,6 +561,7 @@ dependencies = [
  "serde_yaml",
  "string-interner",
  "titlecase",
+ "unicode-normalization",
  "vergen",
 ]
 
