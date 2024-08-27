@@ -670,9 +670,16 @@ impl State {
         scrut: &mut Thunk,
         bindings: &mut Vec<(Name, Thunk)>,
     ) -> Result<bool, MatzoError> {
-        if let Pat::Var(v) = pat {
-            bindings.push((*v, scrut.clone()));
-            return Ok(true);
+        if let Pat::Var(v, fixed) = pat {
+            if *fixed {
+                let val = self.hnf(scrut)?;
+                let val = self.force(val)?;
+                bindings.push((*v, Thunk::Value(val)));
+                return Ok(true);
+            } else {
+                bindings.push((*v, scrut.clone()));
+                return Ok(true);
+            }
         }
         if let Pat::Wildcard = pat {
             return Ok(true);

@@ -116,7 +116,7 @@ pub struct Case {
 #[derive(Debug, Clone)]
 pub enum Pat {
     /// A pattern that matches and binds to a specific name
-    Var(Name),
+    Var(Name, bool),
     /// A pattern that matches anything
     Wildcard,
     /// A literal (string, number, or atom)
@@ -263,7 +263,7 @@ impl ASTArena {
     fn show_pat(&self, pat: &Pat, f: &mut fmt::Formatter) -> fmt::Result {
         match pat {
             Pat::Wildcard => write!(f, "_"),
-            Pat::Var(n) => write!(f, "{}", &self[n.item]),
+            Pat::Var(n, b) => write!(f, "{}{}", if *b { "fix " } else { "" }, &self[n.item]),
             Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[n.item]),
             Pat::Lit(lit) => write!(f, "{:?}", lit),
             Pat::Tup(tup, row) => {

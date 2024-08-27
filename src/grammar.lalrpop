@@ -264,7 +264,8 @@ pub FunCase: Case = {
 pub Pat: Pat = {
     "_" => Pat::Wildcard,
     <Literal> => Pat::Lit(<>),
-    <Name> => Pat::Var(<>),
+    "fix" <Name> => Pat::Var(<>, true),
+    <Name> => Pat::Var(<>, false),
 
     "(" <mut ps:(<Pat> "|")*> <p:Pat> ")" => {
       ps.push(p);
@@ -300,7 +301,10 @@ pub FieldPat: FieldPat = {
       name, pat
     },
     <name:Name> ":" => FieldPat {
-      name, pat: Pat::Var(name)
+      name, pat: Pat::Var(name, false)
+    },
+    "fix" <name:Name> ":" => FieldPat {
+      name, pat: Pat::Var(name, true)
     }
 };
 

@@ -24,3 +24,8 @@ fn is-X {
 };
 puts "is-X[X] => " is-X[X];
 puts "is-X[Y] => " is-X[Y];
+
+(* fixing a local variable should work *)
+fn fix-some[<fix x, y>] => x x "|" y y;
+puts "fix-some[<'a' | 'b', 'c' | 'd'>] => "
+  fix-some[<'a' | 'b', 'c' | 'd'>];

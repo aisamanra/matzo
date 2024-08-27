@@ -12,3 +12,7 @@ f := fn {[<>] => x};
 f := fn {[<x>] => x};
 f := fn {[<x,y>] => x};
 f := fn {[<x,y,z>] => x};
+
+(* fixed variables *)
+f := fn {[fix x] => x x};
+f := fn {[<fix x, y>] => x x y y};
