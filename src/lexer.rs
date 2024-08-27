@@ -30,11 +30,30 @@ fn parse_num<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<i64> {
     slice.parse().ok()
 }
 
-enum StringLitError {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum StringLitError {
     UnexpectedEndAfterBackslash,
     NotAHexDigit(char),
     NotEnoughHexDigits,
     NotAValidChar(u32),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum GenericLexerError {
+    UnknownError,
+    StringLitError(StringLitError),
+}
+
+impl Default for GenericLexerError {
+    fn default() -> GenericLexerError {
+        GenericLexerError::UnknownError
+    }
+}
+
+impl From<StringLitError> for GenericLexerError {
+    fn from(err: StringLitError) -> GenericLexerError {
+        GenericLexerError::StringLitError(err)
+    }
 }
 
 fn parse_escapes<'a>(src: &'a str) -> Result<String, StringLitError> {
@@ -96,6 +115,9 @@ fn parse_fragment<'a>(lex: &mut Lexer<'a, FStringToken<'a>>) -> Result<String, S
 }
 
 #[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"\(\*([^*]|\*[^)])*\*\)")]
+#[logos(error = GenericLexerError)]
 pub enum Token<'a> {
     #[token("<")]
     LAngle,
@@ -183,11 +205,6 @@ pub enum Token<'a> {
 
     #[token("`")]
     FStringStart,
-
-    #[error]
-    #[regex(r"[ \t\n\f]+", logos::skip)]
-    #[regex(r"\(\*([^*]|\*[^)])*\*\)", logos::skip)]
-    Error,
 }
 
 impl<'a> Token<'a> {
@@ -232,13 +249,12 @@ impl<'a> Token<'a> {
             Token::With => "`with`".to_string(),
 
             Token::FStringStart => "`".to_string(),
-
-            Token::Error => "error".to_string(),
         }
     }
 }
 
 #[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(error = GenericLexerError)]
 pub enum FStringToken<'a> {
     #[regex(r"([^`,\\]|\\.)*", parse_fragment)]
     Text(String),
@@ -248,9 +264,6 @@ pub enum FStringToken<'a> {
 
     #[regex(r",\p{Ll}(\pL|[0-9_/-])*", |s| &s.slice()[1..])]
     Var(&'a str),
-
-    #[error]
-    Error,
 }
 
 impl<'a> FStringToken<'a> {
@@ -259,7 +272,6 @@ impl<'a> FStringToken<'a> {
             FStringToken::Text(s) => format!("fragment `{}`", s),
             FStringToken::Var(v) => format!("variable `{}`", v),
             FStringToken::FStringEnd => "`".to_string(),
-            FStringToken::Error => "error".to_string(),
         }
     }
 }
@@ -305,7 +317,7 @@ impl<'a> MatzoLexer<'a> {
 }
 
 impl<'a> Iterator for MatzoLexer<'a> {
-    type Item = (Wrap<'a>, logos::Span);
+    type Item = Result<(Wrap<'a>, logos::Span), GenericLexerError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.mode {
@@ -319,11 +331,11 @@ impl<'a> Iterator for MatzoLexer<'a> {
                 // modes by taking the current lexer and converting it
                 // into one which tokenizes to `FStringToken` values
                 // instead.
-                if let Some(Token::FStringStart) = result {
+                if let Some(Ok(Token::FStringStart)) = result {
                     self.mode = WrappedLexer::FString(inner.to_owned().morph());
                 }
                 // Return the wrapped token and the span
-                result.map(|tok| (Wrap::R(tok), span))
+                result.map(|r| r.map(|tok| (Wrap::R(tok), span)))
             }
 
             // OTOH, if we're in the fstring parsing mode...
@@ -333,11 +345,11 @@ impl<'a> Iterator for MatzoLexer<'a> {
                 let span = inner.span();
                 // and if it marks the end of the string (i.e. it's
                 // another backtick) then swich the mode back
-                if let Some(FStringToken::FStringEnd) = result {
+                if let Some(Ok(FStringToken::FStringEnd)) = result {
                     self.mode = WrappedLexer::Regular(inner.to_owned().morph());
                 }
                 // Return the wrapped token and span
-                result.map(|tok| (Wrap::F(tok), span))
+                result.map(|r| r.map(|tok| (Wrap::F(tok), span)))
             }
         }
     }
@@ -357,14 +369,14 @@ impl std::fmt::Display for LexerError {
 pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Wrap<'_>, usize, LexerError>> {
-    MatzoLexer::lex(source).map(move |(token, range)| match token {
-        Wrap::R(Token::Error) | Wrap::F(FStringToken::Error) => Err(LexerError {
+    MatzoLexer::lex(source).map(move |elem| match elem {
+        Err(_err) => Err(LexerError {
             range: Span {
-                start: range.start as u32,
-                end: range.end as u32,
+                start: 0, // range.start as u32,
+                end: 0, // range.end as u32,
             },
         }),
-        token => Ok((range.start, token, range.end)),
+        Ok((token, range)) => Ok((range.start, token, range.end)),
     })
 }
 

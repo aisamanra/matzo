@@ -74,7 +74,7 @@ impl MatzoError {
                     format!("Unexpected {}. Expected {}", tok.token_name(), expected),
                 )
             }
-            lalrpop_util::ParseError::UnrecognizedEOF { location, expected } => {
+            lalrpop_util::ParseError::UnrecognizedEof { location, expected } => {
                 let span = Span {
                     start: location as u32 - 1,
                     end: location as u32,

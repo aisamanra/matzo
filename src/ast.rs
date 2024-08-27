@@ -188,7 +188,7 @@ impl PartialEq for Literal {
 /// private internals so it can be tweaked later while maintaining
 /// whatever internal invariants we need.
 pub struct ASTArena {
-    strings: string_interner::StringInterner,
+    strings: string_interner::StringInterner<string_interner::DefaultBackend>,
     exprs: Vec<Expr>,
 }
 

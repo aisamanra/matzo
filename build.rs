@@ -3,6 +3,9 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use vergen::*;
+use vergen_git2::*;
+
 const TEST_PREFIX: &str = "
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -81,7 +84,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("cargo:rerun-if-changed={}", file);
     }
 
-    vergen::vergen(vergen::Config::default())?;
+    Emitter::default()
+        .add_instructions(&Git2Builder::all_git()?)?
+        .emit()?;
 
     let out_dir = env::var("OUT_DIR")?;
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
