@@ -16,3 +16,9 @@ Assn  fóo Chc(
   Str("đ")
 )
 
+Assn  example Chc(
+  Str("one")
+  Str("two three")
+  Str("four\nfive")
+)
+

@@ -87,6 +87,7 @@ pub AtomLit: string_interner::DefaultSymbol = {
 pub BareString: String = {
     "var" => <>.to_string(),
     "atom" => <>.to_string(),
+    "str" => <>.to_string(),
 };
 
 pub Name: Name = {
