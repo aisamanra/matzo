@@ -106,3 +106,32 @@ Puts Cat(
   )
 )
 
+Assn fixed fix-some Fun(
+  Tup( fix x y ), 
+ =>
+    Cat(
+      Var(x)
+      Var(x)
+      Str("|")
+      Var(y)
+      Var(y)
+    )
+)
+
+Puts Cat(
+  Str("fix-some[<'a' | 'b', 'c' | 'd'>] => ")
+  Ap(
+    Var(fix-some)
+    Tup(
+      Chc(
+        Str("a")
+        Str("b")
+      )
+      Chc(
+        Str("c")
+        Str("d")
+      )
+    )
+  )
+)
+

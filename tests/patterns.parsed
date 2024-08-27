@@ -52,3 +52,23 @@ Assn  f Fun(
     Var(x)
 )
 
+Assn  f Fun(
+  fix x, 
+ =>
+    Cat(
+      Var(x)
+      Var(x)
+    )
+)
+
+Assn  f Fun(
+  Tup( fix x y ), 
+ =>
+    Cat(
+      Var(x)
+      Var(x)
+      Var(y)
+      Var(y)
+    )
+)
+
