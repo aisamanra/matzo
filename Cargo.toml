@@ -37,7 +37,8 @@ dirs = "*"
 unicode-normalization = "*"
 
 [build-dependencies]
-vergen = "*"
+vergen = "9.0.0"
+vergen-git2 = { version = "*", features = ["build"] }
 
 [build-dependencies.lalrpop]
 version = "*"
