@@ -373,7 +373,7 @@ pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Wrap<'_>, usize, Lex
         Err(_err) => Err(LexerError {
             range: Span {
                 start: 0, // range.start as u32,
-                end: 0, // range.end as u32,
+                end: 0,   // range.end as u32,
             },
         }),
         Ok((token, range)) => Ok((range.start, token, range.end)),
@@ -389,12 +389,12 @@ mod test {
     #[test]
     fn simple_lexer_test() {
         let mut lex = Token::lexer("x := Foo (* ignore *) | \"bar\";");
-        assert_eq!(lex.next(), Some(Token::Var("x")));
-        assert_eq!(lex.next(), Some(Token::Assn));
-        assert_eq!(lex.next(), Some(Token::Atom("Foo")));
-        assert_eq!(lex.next(), Some(Token::Pipe));
-        assert_eq!(lex.next(), Some(Token::Str("bar".to_owned())));
-        assert_eq!(lex.next(), Some(Token::Semi));
+        assert_eq!(lex.next(), Some(Ok(Token::Var("x"))));
+        assert_eq!(lex.next(), Some(Ok(Token::Assn)));
+        assert_eq!(lex.next(), Some(Ok(Token::Atom("Foo"))));
+        assert_eq!(lex.next(), Some(Ok(Token::Pipe)));
+        assert_eq!(lex.next(), Some(Ok(Token::Str("bar".to_owned()))));
+        assert_eq!(lex.next(), Some(Ok(Token::Semi)));
         assert_eq!(lex.next(), None)
     }
 
@@ -414,7 +414,7 @@ mod test {
         ];
 
         for e in expected {
-            assert_eq!(lex.next().map(|r| r.0), Some(e));
+            assert_eq!(lex.next().map(|r| r.unwrap().0), Some(e));
         }
         assert_eq!(lex.next(), None);
     }
