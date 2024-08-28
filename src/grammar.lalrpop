@@ -262,15 +262,23 @@ pub FunCase: Case = {
 };
 
 pub Pat: Pat = {
+  <mut ps:(<Pat2> "|")*> <p:Pat2> => {
+    if ps.is_empty() {
+      p
+    } else {
+      ps.push(p);
+      Pat::Any(ps)
+    }
+  },
+};
+
+Pat2: Pat = {
     "_" => Pat::Wildcard,
     <Literal> => Pat::Lit(<>),
     "fix" <Name> => Pat::Var(<>, true),
     <Name> => Pat::Var(<>, false),
 
-    "(" <mut ps:(<Pat> "|")*> <p:Pat> ")" => {
-      ps.push(p);
-      Pat::Any(ps)
-    },
+    "(" <Pat> ")" => <>,
 
     "<" ">" => Pat::Tup(Vec::new(), RowPat::NoRest),
     "<" <mut ps:(<Pat> ",")*> <p:Pat> ","? ">" => {
