@@ -164,13 +164,14 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             name: "add",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
-                    if let [x, y] = exprs {
-                        let x = state.eval(*x, env)?.as_num(&state.ast.borrow(), x.loc)?;
-                        let y = state.eval(*y, env)?.as_num(&state.ast.borrow(), y.loc)?;
-                        Ok(Value::Lit(Literal::Num(x + y)))
-                    } else {
-                        arity_error("add", 2, exprs)
+                    let mut sum = 0;
+                    for expr in exprs {
+                        let n = state
+                            .eval(*expr, env)?
+                            .as_num(&state.ast.borrow(), expr.loc)?;
+                        sum += n;
                     }
+                    Ok(Value::Lit(Literal::Num(sum)))
                 },
             ),
         },
@@ -192,13 +193,14 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             name: "mul",
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
-                    if let [x, y] = exprs {
-                        let x = state.eval(*x, env)?.as_num(&state.ast.borrow(), x.loc)?;
-                        let y = state.eval(*y, env)?.as_num(&state.ast.borrow(), y.loc)?;
-                        Ok(Value::Lit(Literal::Num(x * y)))
-                    } else {
-                        arity_error("mul", 2, exprs)
+                    let mut prod = 1;
+                    for expr in exprs {
+                        let n = state
+                            .eval(*expr, env)?
+                            .as_num(&state.ast.borrow(), expr.loc)?;
+                        prod *= n;
                     }
+                    Ok(Value::Lit(Literal::Num(prod)))
                 },
             ),
         },
