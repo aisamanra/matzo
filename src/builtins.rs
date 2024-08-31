@@ -166,7 +166,9 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     let mut sum = 0;
                     for expr in exprs {
-                        let n = state.eval(*expr, env)?.as_num(&state.ast.borrow(), expr.loc)?;
+                        let n = state
+                            .eval(*expr, env)?
+                            .as_num(&state.ast.borrow(), expr.loc)?;
                         sum += n;
                     }
                     Ok(Value::Lit(Literal::Num(sum)))
@@ -193,7 +195,9 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     let mut prod = 1;
                     for expr in exprs {
-                        let n = state.eval(*expr, env)?.as_num(&state.ast.borrow(), expr.loc)?;
+                        let n = state
+                            .eval(*expr, env)?
+                            .as_num(&state.ast.borrow(), expr.loc)?;
                         prod *= n;
                     }
                     Ok(Value::Lit(Literal::Num(prod)))
