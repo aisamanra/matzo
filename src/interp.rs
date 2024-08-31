@@ -173,13 +173,13 @@ impl State {
         &self,
         src: &str,
         file: FileRef,
-        mut w: &mut impl std::io::Write,
+        w: &mut impl std::io::Write,
     ) -> Result<(), MatzoError> {
         let lexed = lexer::tokens(src);
         let stmts = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed);
         let stmts = stmts.map_err(|e| MatzoError::from_parse_error(file, e))?;
         for stmt in stmts {
-            self.execute(&stmt, &mut w)?;
+            self.execute(&stmt, w)?;
         }
         Ok(())
     }
@@ -227,7 +227,7 @@ impl State {
     fn repl_main(&self, src: &str) -> Result<(), MatzoError> {
         let stmts = self.repl_parse(src)?;
         for stmt in stmts {
-            self.execute(&stmt, io::stdout())?;
+            self.execute(&stmt, &mut io::stdout())?;
         }
         Ok(())
     }
@@ -253,7 +253,7 @@ impl State {
     /// output writer. Right now, this will always run in the global
     /// root scope: there are no statements within functions, so
     /// statements are necessarily "top-level".
-    pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), MatzoError> {
+    pub fn execute(&self, stmt: &Stmt, output: &mut impl io::Write) -> Result<(), MatzoError> {
         match stmt {
             // For a `puts`, we want to evaluate the provided
             // expression _all the way_ (i.e. recursively, not just to
@@ -578,11 +578,11 @@ impl State {
     /// The above program should print one of "aa!", "bb!", "aa?", or
     /// "bb?". That means it needs to
     ///  1. force the argument first to `<_, _>`, to make sure it's a
-    /// two-element tuple
+    ///     two-element tuple
     /// 2. force the first element of the tuple to `Foo` or `Bar` to
-    /// discriminate on it, but
+    ///    discriminate on it, but
     /// 3. _not_ force the second element of the tuple, because we
-    /// want it to vary from invocation to invocation.
+    ///    want it to vary from invocation to invocation.
     ///
     /// So the way we do this is, we start by representing the
     /// argument as a `Thunk::Expr`, but allow the pattern-matching

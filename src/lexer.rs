@@ -38,16 +38,11 @@ pub enum StringLitError {
     NotAValidChar(u32),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
 pub enum GenericLexerError {
+    #[default]
     UnknownError,
     StringLitError(StringLitError),
-}
-
-impl Default for GenericLexerError {
-    fn default() -> GenericLexerError {
-        GenericLexerError::UnknownError
-    }
 }
 
 impl From<StringLitError> for GenericLexerError {
@@ -56,7 +51,7 @@ impl From<StringLitError> for GenericLexerError {
     }
 }
 
-fn parse_escapes<'a>(src: &'a str) -> Result<String, StringLitError> {
+fn parse_escapes(src: &str) -> Result<String, StringLitError> {
     let mut buf = String::new();
     let mut src = src.chars();
     while let Some(c) = src.next() {

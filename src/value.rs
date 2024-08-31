@@ -32,7 +32,7 @@ impl Value {
         match self {
             Value::Lit(Literal::Num(n)) => Ok(*n),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected number, got {}", s)));
+                Err(MatzoError::new(loc, format!("Expected number, got {}", s)))
             }),
         }
     }
@@ -42,7 +42,7 @@ impl Value {
         match self {
             Value::Lit(Literal::Str(s)) => Ok(s),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected string, got {}", s)));
+                Err(MatzoError::new(loc, format!("Expected string, got {}", s)))
             }),
         }
     }
@@ -52,7 +52,7 @@ impl Value {
         match self {
             Value::Tup(vals) => Ok(vals),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected tuple, got {}", s)));
+                Err(MatzoError::new(loc, format!("Expected tuple, got {}", s)))
             }),
         }
     }
@@ -62,7 +62,7 @@ impl Value {
         match self {
             Value::Closure(closure) => Ok(closure),
             _ => self.with_str(ast, |s| {
-                return Err(MatzoError::new(loc, format!("Expected closure, got {}", s)));
+                Err(MatzoError::new(loc, format!("Expected closure, got {}", s)))
             }),
         }
     }
@@ -76,7 +76,7 @@ impl Value {
         match self {
             Value::Nil => f(""),
             Value::Lit(Literal::Str(s)) => f(s),
-            Value::Lit(Literal::Atom(s)) => f(&ast[s.item].to_string()),
+            Value::Lit(Literal::Atom(s)) => f(&ast[s.item]),
             Value::Lit(Literal::Num(n)) => f(&format!("{}", n)),
 
             Value::Tup(values) => {
