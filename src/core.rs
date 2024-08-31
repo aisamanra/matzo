@@ -1,25 +1,27 @@
 /// A location in a source file
 #[derive(Debug, Clone, Copy)]
 pub struct Span {
-    pub start: u32,
-    pub end: u32,
+    pub start: usize,
+    pub end: usize,
 }
 
 impl Span {
     /// Create a span which does not refer to any specific part of the
     /// file. (We should avoid using this if at all possible, but it
     /// does help in a few places.)
+    #[must_use]
     pub fn empty() -> Span {
         Span {
-            start: u32::MAX,
-            end: u32::MAX,
+            start: usize::MAX,
+            end: usize::MAX,
         }
     }
 
     /// Returns `true` if this is a `Span::empty()`, and `false`
     /// otherwise.
+    #[must_use]
     pub fn exists(&self) -> bool {
-        self.start != u32::MAX && self.end != u32::MAX
+        self.start != usize::MAX && self.end != usize::MAX
     }
 }
 
@@ -63,6 +65,7 @@ pub struct FileTable {
 }
 
 impl FileTable {
+    #[must_use]
     pub fn new() -> FileTable {
         FileTable {
             files: Vec::new(),
@@ -96,6 +99,7 @@ impl FileTable {
     /// a second line that points to the span within the line,
     /// specifically for error messages. If the `Loc` contains an
     /// empty span, then this will produce an empty string instead.
+    #[must_use]
     pub fn get_line(&self, loc: Loc) -> String {
         if !loc.span.exists() {
             return String::new();
@@ -116,11 +120,11 @@ impl FileTable {
         // about here. It's fine. It's fine! It's fine.
         for (i, ch) in src.char_indices() {
             if ch == '\n' {
-                if i < span.start as usize {
+                if i < span.start {
                     line_number += 1;
                     start_of_line = i + 1;
                 }
-                if i >= span.end as usize && end_of_line.is_none() {
+                if i >= span.end && end_of_line.is_none() {
                     end_of_line = Some(i);
                 }
             }
@@ -133,10 +137,10 @@ impl FileTable {
             line_number += offset;
         }
 
-        let mut result = format!("{:3} |", line_number);
+        let mut result = format!("{line_number:3} |");
         result.push_str(&src[start_of_line..end_of_line]);
         result.push_str("\n     ");
-        for _ in start_of_line..(span.start as usize) {
+        for _ in start_of_line..(span.start) {
             result.push(' ');
         }
         for _ in span.start..span.end {

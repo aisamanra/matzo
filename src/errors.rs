@@ -15,6 +15,7 @@ pub struct ContextLine {
 }
 
 impl MatzoError {
+    #[must_use]
     pub fn new(loc: Loc, message: String) -> MatzoError {
         MatzoError {
             message,
@@ -23,12 +24,13 @@ impl MatzoError {
         }
     }
 
+    #[must_use]
     pub fn reposition(mut self, loc: Loc) -> MatzoError {
         self.loc = loc;
         self
     }
 
-    fn format_expected_list(expected: Vec<String>) -> String {
+    fn format_expected_list(expected: &[String]) -> String {
         if expected.len() == 1 {
             expected[0].to_string()
         } else {
@@ -47,6 +49,7 @@ impl MatzoError {
         }
     }
 
+    #[must_use]
     pub fn from_parse_error(
         file: FileRef,
         err: lalrpop_util::ParseError<usize, lexer::Wrap, lexer::LexerError>,
@@ -64,25 +67,25 @@ impl MatzoError {
                 expected,
             } => {
                 let span = Span {
-                    start: start as u32,
-                    end: end as u32,
+                    start: start,
+                    end: end,
                 };
 
-                let expected = MatzoError::format_expected_list(expected);
+                let expected = MatzoError::format_expected_list(&expected);
                 MatzoError::new(
                     Loc { span, file },
-                    format!("Unexpected {}. Expected {}", tok.token_name(), expected),
+                    format!("Unexpected {}. Expected {expected}", tok.token_name()),
                 )
             }
             lalrpop_util::ParseError::UnrecognizedEof { location, expected } => {
                 let span = Span {
-                    start: location as u32 - 1,
-                    end: location as u32,
+                    start: location - 1,
+                    end: location,
                 };
-                let expected = MatzoError::format_expected_list(expected);
+                let expected = MatzoError::format_expected_list(&expected);
                 MatzoError::new(
                     Loc { span, file },
-                    format!("Unexpected end-of-file; expected {}", expected),
+                    format!("Unexpected end-of-file; expected {expected}"),
                 )
             }
             lalrpop_util::ParseError::InvalidToken { .. } => {
@@ -92,8 +95,8 @@ impl MatzoError {
                 token: (start, tok, end),
             } => {
                 let span = Span {
-                    start: start as u32,
-                    end: end as u32,
+                    start: start,
+                    end: end,
                 };
                 MatzoError::new(
                     Loc { span, file },

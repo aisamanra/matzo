@@ -1,8 +1,21 @@
-use crate::ast::*;
+use crate::ast::{
+    ASTArena,
+    Binding,
+    Choice,
+    Expr,
+    ExprRef,
+    FileRef,
+    Literal,
+    Name,
+    Pat,
+    RowPat,
+    Stmt,
+    StrRef,
+};
 use crate::builtins::builtins;
 use crate::core::FileTable;
 use crate::errors::MatzoError;
-use crate::rand::*;
+use crate::rand::{Randomizer, DefaultRNG, SeededRNG};
 pub use crate::value::*;
 use crate::{grammar, lexer};
 
@@ -57,7 +70,7 @@ pub struct State {
     /// The set of builtin (i.e. implemented-in-Rust) functions
     builtins: Vec<BuiltinFunc>,
     /// The thread-local RNG.
-    rand: RefCell<Box<dyn MatzoRand>>,
+    rand: RefCell<Box<dyn Randomizer>>,
     /// The instantiated parser used to parse Matzo programs
     parser: grammar::StmtsParser,
     /// The instantiated parser used to parse Matzo expressions
@@ -73,7 +86,7 @@ impl Default for State {
 impl State {
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
-    fn new_with_rand(rand: Box<dyn MatzoRand>) -> State {
+    fn new_with_rand(rand: Box<dyn Randomizer>) -> State {
         let mut s = State {
             root_scope: RefCell::new(HashMap::new()),
             file_table: RefCell::new(FileTable::new()),
@@ -100,12 +113,14 @@ impl State {
 
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
+    #[must_use]
     pub fn new() -> State {
         State::new_with_rand(Box::new(DefaultRNG::new()))
     }
 
     /// This initializes a new `State` and adds all the builtin
     /// functions to the root scope
+    #[must_use]
     pub fn new_from_seed(seed: u64) -> State {
         State::new_with_rand(Box::new(SeededRNG::from_seed(seed)))
     }
@@ -263,7 +278,7 @@ impl State {
                 let val = self.force(val)?;
                 let raw_str = val.to_string(&self.ast.borrow());
                 let nfc: String = raw_str.nfc().collect();
-                writeln!(output, "{}", nfc).unwrap();
+                writeln!(output, "{nfc}").unwrap();
             }
 
             // Look up the provided name, and if it's not already
@@ -280,7 +295,7 @@ impl State {
                     Thunk::Value(v) => v,
                     // if it's not an expr or val, then our work here
                     // is done
-                    _ => return Ok(()),
+                    Thunk::Builtin(_) => return Ok(()),
                 };
                 let val = self.force(val)?;
                 self.root_scope
@@ -339,6 +354,7 @@ impl State {
 
     /// Given an `ExprRef` and an environment, fetch that expression
     /// and then evalute it in that environment
+    #[allow(clippy::too_many_lines)]
     pub fn eval(&self, expr_ref: ExprRef, env: &Env) -> Result<Value, MatzoError> {
         let expr = &self.ast.borrow()[expr_ref.item];
         match expr {
@@ -457,7 +473,7 @@ impl State {
             // evaluate the body within that scope.
             Expr::Let(bindings, body) => {
                 let mut last_scope = env.clone();
-                for b in bindings.iter() {
+                for b in bindings {
                     let mut binding = HashMap::new();
                     self.extend_scope(b, &last_scope, |k, v| {
                         binding.insert(k, v);
@@ -485,18 +501,14 @@ impl State {
             }
 
             Expr::Access(expr, field) => {
-                let record = if let Value::Record(rec) = self.eval(*expr, env)? {
-                    rec
-                } else {
+                let Value::Record(record) = self.eval(*expr, env)? else {
                     return Err(MatzoError::new(
                         expr_ref.loc,
                         "{} is not a record and cannot be accessed with field syntax".to_string(),
                     ));
                 };
 
-                let thunk = if let Some(thunk) = record.get(&field.item) {
-                    thunk
-                } else {
+                let Some(thunk) = record.get(&field.item) else {
                     return Err(MatzoError::new(
                         expr_ref.loc,
                         format!(
@@ -509,9 +521,7 @@ impl State {
             }
 
             Expr::With(expr, fields) => {
-                let mut record = if let Value::Record(rec) = self.eval(*expr, env)? {
-                    rec
-                } else {
+                let Value::Record(mut record) = self.eval(*expr, env)? else {
                     return Err(MatzoError::new(
                         expr_ref.loc,
                         "{} is not a record and cannot be updated with record update syntax"
@@ -596,10 +606,9 @@ impl State {
     ) -> Result<Value, MatzoError> {
         let ast = self.ast.borrow();
         let cases = match &ast[closure.func] {
-            Expr::Fun(cases) => cases,
-            Expr::Case(_, cases) => cases,
+            Expr::Case(_, cases) | Expr::Fun(cases) => cases,
             // see the note attached to the definition of `Closure`
-            other => panic!("Expected a `Fun` or `Case` in a closure, found {:?}", other),
+            other => panic!("Expected a `Fun` or `Case` in a closure, found {other:?}"),
         };
 
         // for each case
@@ -633,9 +642,10 @@ impl State {
             return self.eval(c.expr, &Some(new_scope));
         }
 
-        // we couldn't find a matching pattern, so throw an error
         let mut buf = String::new();
-        if scruts.len() != 1 {
+        if scruts.len() == 1 {
+            scruts[0].with_str(&self.ast.borrow(), |s| buf.push_str(s));
+        } else {
             let arena = self.ast.borrow();
             buf.push('[');
             for (i, scrut) in scruts.iter().enumerate() {
@@ -645,12 +655,12 @@ impl State {
                 scrut.with_str(&arena, |s| buf.push_str(s));
             }
             buf.push(']');
-        } else {
-            scruts[0].with_str(&self.ast.borrow(), |s| buf.push_str(s));
         }
+
+        // we couldn't find a matching pattern, so throw an error
         Err(MatzoError::new(
             closure.func.loc,
-            format!("No pattern matched {}", buf),
+            format!("No pattern matched {buf}"),
         ))
     }
 
@@ -687,7 +697,7 @@ impl State {
         // if it's not just a variable, then we'll need to make sure
         // we've evaluated `scrut` at least one level from here
         if let Thunk::Expr(e, env) = scrut {
-            *scrut = Thunk::Value(self.eval(*e, env)?)
+            *scrut = Thunk::Value(self.eval(*e, env)?);
         };
 
         // now we can match deeper patterns, at least a little
@@ -751,7 +761,7 @@ impl State {
             Pat::Rec(fields, rest) => {
                 if let Thunk::Value(Value::Record(rec)) = scrut {
                     let mut matched_fields = BTreeSet::new();
-                    for field in fields.iter() {
+                    for field in fields {
                         if let Some(thunk) = rec.get_mut(&field.name.item) {
                             if !self.match_pat(&field.pat, thunk, bindings)? {
                                 return Ok(false);
@@ -767,7 +777,7 @@ impl State {
                         RowPat::UnboundRest => Ok(true),
                         RowPat::BoundRest(name) => {
                             let mut rest = rec.clone();
-                            for matched in matched_fields.iter() {
+                            for matched in &matched_fields {
                                 let _ = rest.remove(matched);
                             }
                             bindings.push((*name, Thunk::Value(Value::Record(rest))));

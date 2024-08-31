@@ -21,7 +21,7 @@ fn generate_runs(source: &str) -> Result<BTreeMap<String, String>, Box<dyn std::
     }
     let output = found_results
         .into_iter()
-        .map(|(k, v)| (format!("{}", v), k))
+        .map(|(k, v)| (format!("{v}"), k))
         .collect();
     Ok(output)
 }
@@ -31,11 +31,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let exp = exp?.path().canonicalize()?;
         let fname = exp.file_name().ok_or("bad file name")?.to_string_lossy();
         if let Some(prefix) = fname.strip_suffix(".matzo") {
-            println!("regenerating {}.matzo", prefix);
+            println!("regenerating {prefix}.matzo");
             let exp_filename = |new_suffix| {
                 let mut f = exp.clone();
                 f.pop();
-                f.push(format!("{}.{}", prefix, new_suffix));
+                f.push(format!("{prefix}.{new_suffix}"));
                 f
             };
 
@@ -53,15 +53,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             if let Ok(existing) = std::fs::read_to_string(exp_filename("output")) {
                 let existing: BTreeMap<String, String> = serde_yaml::from_str(&existing)?;
-                print!("  generating output for {}: ", fname);
+                print!("  generating output for {fname}: ");
                 let map = generate_runs(&src)?;
-                if map != existing {
+                if map == existing {
+                    println!("no changes needed");
+                } else {
                     let mut f = std::fs::File::create(exp_filename("output"))?;
                     writeln!(f, "# generated for {}", env!("VERGEN_GIT_SHA"))?;
                     writeln!(f, "{}", serde_yaml::to_string(&map)?)?;
                     println!("generated {} cases", map.len());
-                } else {
-                    println!("no changes needed");
                 }
             }
         }

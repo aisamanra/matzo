@@ -10,7 +10,7 @@ pub struct Located<T> {
 impl<T> Located<T> {
     pub fn new(item: T, file: FileRef, span: Span) -> Located<T> {
         Located {
-            loc: Loc { file, span },
+            loc: Loc { span, file },
             item,
         }
     }
@@ -203,12 +203,13 @@ pub enum Token<'a> {
 }
 
 impl<'a> Token<'a> {
+    #[must_use]
     pub fn token_name(&self) -> String {
         match self {
-            Token::Var(v) => format!("variable `{}`", v),
-            Token::Atom(a) => format!("atom `{}`", a),
-            Token::Num(n) => format!("number `{}`", n),
-            Token::Str(s) => format!("string `{}`", s),
+            Token::Var(v) => format!("variable `{v}`"),
+            Token::Atom(a) => format!("atom `{a}`"),
+            Token::Num(n) => format!("number `{n}`"),
+            Token::Str(s) => format!("string `{s}`"),
 
             Token::LAngle => "`<`".to_string(),
             Token::RAngle => "`>`".to_string(),
@@ -262,10 +263,11 @@ pub enum FStringToken<'a> {
 }
 
 impl<'a> FStringToken<'a> {
+    #[must_use]
     fn token_name(&self) -> String {
         match self {
-            FStringToken::Text(s) => format!("fragment `{}`", s),
-            FStringToken::Var(v) => format!("variable `{}`", v),
+            FStringToken::Text(s) => format!("fragment `{s}`"),
+            FStringToken::Var(v) => format!("variable `{v}`"),
             FStringToken::FStringEnd => "`".to_string(),
         }
     }
@@ -280,6 +282,7 @@ pub enum Wrap<'a> {
 }
 
 impl<'a> Wrap<'a> {
+    #[must_use]
     pub fn token_name(&self) -> String {
         match self {
             Wrap::R(tok) => tok.token_name(),

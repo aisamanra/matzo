@@ -92,7 +92,7 @@ pub BareString: String = {
 
 pub Name: Name = {
     <start: @L> <str:"var"> <end: @R> =>
-        Located::new(ast.add_string(str), file, Span { start: start as u32, end: end as u32 }),
+        Located::new(ast.add_string(str), file, Span { start, end }),
 };
 
 pub ExprRef = Located<Expr>;
@@ -317,5 +317,5 @@ pub Literal: Literal = {
 #[inline]
 Located<T>: Located<T> = {
     <start: @L> <data: T> <end: @R> =>
-        Located::new(data, file, Span { start: start as u32, end: end as u32 }),
+        Located::new(data, file, Span { start, end }),
 };
