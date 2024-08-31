@@ -66,10 +66,7 @@ impl MatzoError {
                 token: (start, tok, end),
                 expected,
             } => {
-                let span = Span {
-                    start: start,
-                    end: end,
-                };
+                let span = Span {start, end};
 
                 let expected = MatzoError::format_expected_list(&expected);
                 MatzoError::new(
@@ -94,10 +91,7 @@ impl MatzoError {
             lalrpop_util::ParseError::ExtraToken {
                 token: (start, tok, end),
             } => {
-                let span = Span {
-                    start: start,
-                    end: end,
-                };
+                let span = Span { start, end };
                 MatzoError::new(
                     Loc { span, file },
                     format!("Extra token {}", tok.token_name()),

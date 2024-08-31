@@ -686,10 +686,10 @@ impl State {
                 let val = self.force(val)?;
                 bindings.push((*v, Thunk::Value(val)));
                 return Ok(true);
-            } else {
-                bindings.push((*v, scrut.clone()));
-                return Ok(true);
             }
+
+            bindings.push((*v, scrut.clone()));
+            return Ok(true);
         }
         if let Pat::Wildcard = pat {
             return Ok(true);

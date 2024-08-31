@@ -38,6 +38,19 @@ impl Value {
         }
     }
 
+    /// Convert this value to a Rust integer, failing otherwise
+    pub fn as_usize(&self, ast: &ASTArena, loc: Loc) -> Result<usize, MatzoError> {
+        match self {
+            Value::Lit(Literal::Num(n)) => match (*n).try_into() {
+                Ok(m) => Ok(m),
+                Err(_) => Err(MatzoError::new(loc, format!("Number out of usable range: {n}"))),
+            }
+            _ => self.with_str(ast, |s| {
+                Err(MatzoError::new(loc, format!("Expected number, got {s}")))
+            }),
+        }
+    }
+
     /// Convert this value to a Rust string, failing otherwise
     pub fn as_str(&self, ast: &ASTArena, loc: Loc) -> Result<&str, MatzoError> {
         match self {
