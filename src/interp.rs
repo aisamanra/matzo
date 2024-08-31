@@ -578,11 +578,11 @@ impl State {
     /// The above program should print one of "aa!", "bb!", "aa?", or
     /// "bb?". That means it needs to
     ///  1. force the argument first to `<_, _>`, to make sure it's a
-    /// two-element tuple
+    ///     two-element tuple
     /// 2. force the first element of the tuple to `Foo` or `Bar` to
-    /// discriminate on it, but
+    ///    discriminate on it, but
     /// 3. _not_ force the second element of the tuple, because we
-    /// want it to vary from invocation to invocation.
+    ///    want it to vary from invocation to invocation.
     ///
     /// So the way we do this is, we start by representing the
     /// argument as a `Thunk::Expr`, but allow the pattern-matching
