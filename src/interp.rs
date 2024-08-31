@@ -173,13 +173,13 @@ impl State {
         &self,
         src: &str,
         file: FileRef,
-        mut w: &mut impl std::io::Write,
+        w: &mut impl std::io::Write,
     ) -> Result<(), MatzoError> {
         let lexed = lexer::tokens(src);
         let stmts = self.parser.parse(&mut self.ast.borrow_mut(), file, lexed);
         let stmts = stmts.map_err(|e| MatzoError::from_parse_error(file, e))?;
         for stmt in stmts {
-            self.execute(&stmt, &mut w)?;
+            self.execute(&stmt, w)?;
         }
         Ok(())
     }
@@ -227,7 +227,7 @@ impl State {
     fn repl_main(&self, src: &str) -> Result<(), MatzoError> {
         let stmts = self.repl_parse(src)?;
         for stmt in stmts {
-            self.execute(&stmt, io::stdout())?;
+            self.execute(&stmt, &mut io::stdout())?;
         }
         Ok(())
     }
@@ -253,7 +253,7 @@ impl State {
     /// output writer. Right now, this will always run in the global
     /// root scope: there are no statements within functions, so
     /// statements are necessarily "top-level".
-    pub fn execute(&self, stmt: &Stmt, mut output: impl io::Write) -> Result<(), MatzoError> {
+    pub fn execute(&self, stmt: &Stmt, output: &mut impl io::Write) -> Result<(), MatzoError> {
         match stmt {
             // For a `puts`, we want to evaluate the provided
             // expression _all the way_ (i.e. recursively, not just to
