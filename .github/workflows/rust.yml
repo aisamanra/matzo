@@ -23,4 +23,4 @@ jobs:
     - name: Check formatting
       run: cargo fmt --check
     - name: Check lints
-      run: cargo clippy -- -Dwarnings
+      run: cargo clippy -- -W clippy::pedantic -Dwarnings
