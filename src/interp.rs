@@ -1,5 +1,6 @@
 use crate::ast::{
-    ASTArena, Binding, Choice, Expr, ExprRef, FileRef, Literal, Name, Pat, RowPat, Stmt, StrRef,
+    ASTArena, Binding, Choice, Expr, ExprRef, FileRef, Literal, Name, Pat, PatRef, RowPat, Stmt,
+    StrRef,
 };
 use crate::builtins::builtins;
 use crate::core::FileTable;
@@ -609,7 +610,7 @@ impl State {
                 continue;
             }
             for (scrut, pat) in scruts.iter_mut().zip(c.pats.iter()) {
-                if !self.match_pat(pat, scrut, &mut bindings)? {
+                if !self.match_pat(*pat, scrut, &mut bindings)? {
                     // if we didn't match, we don't care about any
                     // bindings we've found: simply skip it
                     continue 'cases;
@@ -663,12 +664,22 @@ impl State {
     /// `Ok(true)`, then those are the thunks that should be bound to
     /// names in the context, but otherwise those bindings can be
     /// safely ignored.
+    #[allow(clippy::too_many_lines)]
     fn match_pat(
         &self,
-        pat: &Pat,
+        pat_ref: PatRef,
         scrut: &mut Thunk,
         bindings: &mut Vec<(Name, Thunk)>,
     ) -> Result<bool, MatzoError> {
+        let pat = &self.ast.borrow()[pat_ref];
+
+        if let Some(problem) = pat.ensure_valid(&self.ast.borrow()) {
+            return Err(MatzoError::new(
+                pat_ref.loc,
+                format!("Invalid or-pattern: {}", problem.show(&self.ast.borrow())),
+            ));
+        }
+
         if let Pat::Var(v, fixed) = pat {
             if *fixed {
                 let val = self.hnf(scrut)?;
@@ -702,7 +713,7 @@ impl State {
 
             Pat::Any(pats) => {
                 for p in pats {
-                    if self.match_pat(p, scrut, bindings)? {
+                    if self.match_pat(*p, scrut, bindings)? {
                         return Ok(true);
                     }
                 }
@@ -729,7 +740,7 @@ impl State {
                     }
 
                     for (p, t) in pats.iter().zip(thunks.iter_mut()) {
-                        if !self.match_pat(p, t, bindings)? {
+                        if !self.match_pat(*p, t, bindings)? {
                             return Ok(false);
                         }
                     }
@@ -752,7 +763,7 @@ impl State {
                     let mut matched_fields = BTreeSet::new();
                     for field in fields {
                         if let Some(thunk) = rec.get_mut(&field.name.item) {
-                            if !self.match_pat(&field.pat, thunk, bindings)? {
+                            if !self.match_pat(field.pat, thunk, bindings)? {
                                 return Ok(false);
                             }
                             matched_fields.insert(field.name.item);

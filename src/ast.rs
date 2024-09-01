@@ -1,6 +1,8 @@
 pub use crate::lexer::{FileRef, Located, Span};
 use std::fmt;
 
+use std::collections::BTreeSet;
+
 // There are two big parts to this file: firstly, there are the
 // representations of the relevant data structures, and then there's
 // the `ASTArena` that contains them.
@@ -98,6 +100,19 @@ pub struct ExprId {
     idx: usize,
 }
 
+/// A `PatRef` contains not just an index but also a wrapped
+/// location.
+pub type PatRef = Located<PatId>;
+
+/// A reference to an `Pat` in the `ASTArena`. We should only produce
+/// these for expressions that definitely exist, so we shouldn't need
+/// to verify that they're valid first. (We never modify or remove
+/// elements in an `ASTArena`, after all.)
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct PatId {
+    idx: usize,
+}
+
 impl ExprId {
     /// We pre-initialize the `ASTArena` with a `nil` value, so all
     /// nil values can point to that.
@@ -110,7 +125,7 @@ impl ExprId {
 /// A single case in an anonymous function or `case` statement
 #[derive(Debug, Clone)]
 pub struct Case {
-    pub pats: Vec<Pat>,
+    pub pats: Vec<PatRef>,
     pub expr: ExprRef,
 }
 
@@ -124,18 +139,18 @@ pub enum Pat {
     /// A literal (string, number, or atom)
     Lit(Literal),
     /// A tuple of other patterns, perhaps with a catchall
-    Tup(Vec<Pat>, RowPat),
+    Tup(Vec<PatRef>, RowPat),
     /// A record pattern, perhaps with a catchall
     Rec(Vec<FieldPat>, RowPat),
     /// Disjunctions
-    Any(Vec<Pat>),
+    Any(Vec<PatRef>),
 }
 
 /// A record field as used in a pattern
 #[derive(Debug, Clone)]
 pub struct FieldPat {
     pub name: Name,
-    pub pat: Pat,
+    pub pat: PatRef,
 }
 
 /// This represents the "leftover" part of a record pattern: what do
@@ -149,6 +164,121 @@ pub enum RowPat {
     UnboundRest,
     /// Bind the record modulo the matched fields to a new name
     BoundRest(Name),
+}
+
+impl RowPat {
+    fn add_bound_variables(&self, vec: &mut BTreeSet<StrRef>) {
+        match self {
+            RowPat::NoRest | RowPat::UnboundRest => (),
+            RowPat::BoundRest(n) => {
+                vec.insert(n.item);
+            }
+        }
+    }
+}
+
+/// Represents a problem with a pattern
+#[derive(Debug)]
+pub struct InvalidPattern {
+    pub inconsistent_variables: BTreeSet<StrRef>,
+}
+
+impl InvalidPattern {
+    #[must_use]
+    pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Printable<'a, InvalidPattern> {
+        Printable {
+            arena: ast,
+            value: self,
+        }
+    }
+}
+
+impl<'a> fmt::Display for Printable<'a, InvalidPattern> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let vars = self.value.inconsistent_variables.len();
+        if vars == 1 {
+            let head = &self.arena[*self.value.inconsistent_variables.first().unwrap()];
+            write!(f, "The variable {head} was not defined in all branches")
+        } else {
+            write!(
+                f,
+                "The following variables were not defined in all branches: "
+            )?;
+            for (i, v) in self.value.inconsistent_variables.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", &self.arena[*v])?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl Pat {
+    /// This returns `None` if there are no problems, and
+    /// `Some(pattern_issue)` if there's an issue
+    #[must_use]
+    pub fn ensure_valid(&self, ast: &ASTArena) -> Option<InvalidPattern> {
+        let mut inconsistent_variables = BTreeSet::new();
+        self.bound_variables(&mut inconsistent_variables, ast);
+        if inconsistent_variables.is_empty() {
+            None
+        } else {
+            Some(InvalidPattern {
+                inconsistent_variables,
+            })
+        }
+    }
+
+    fn bound_variables(&self, problems: &mut BTreeSet<StrRef>, ast: &ASTArena) -> BTreeSet<StrRef> {
+        match self {
+            Pat::Var(n, _) => {
+                let mut hs = BTreeSet::new();
+                hs.insert(n.item);
+                hs
+            }
+            Pat::Wildcard | Pat::Lit(_) => BTreeSet::new(),
+            Pat::Tup(pats, row) => {
+                let mut list = pats
+                    .iter()
+                    .flat_map(|p| ast[*p].bound_variables(problems, ast))
+                    .collect();
+                row.add_bound_variables(&mut list);
+                list
+            }
+            Pat::Rec(fields, row) => {
+                let mut list = fields
+                    .iter()
+                    .flat_map(|f| ast[f.pat].bound_variables(problems, ast))
+                    .collect();
+                row.add_bound_variables(&mut list);
+                list
+            }
+            Pat::Any(pats) => {
+                let mut all: Vec<_> = pats
+                    .iter()
+                    .map(|p| ast[*p].bound_variables(problems, ast))
+                    .collect();
+                let Some(head) = all.pop() else {
+                    return BTreeSet::new();
+                };
+
+                for entry in &all {
+                    if &head != entry {
+                        for i in entry.difference(&head) {
+                            problems.insert(*i);
+                        }
+                        for i in head.difference(entry) {
+                            problems.insert(*i);
+                        }
+                    }
+                }
+
+                head
+            }
+        }
+    }
 }
 
 /// A single element in a choice, with an optional weight (which
@@ -193,6 +323,7 @@ impl PartialEq for Literal {
 pub struct ASTArena {
     strings: string_interner::StringInterner<string_interner::DefaultBackend>,
     exprs: Vec<Expr>,
+    pats: Vec<Pat>,
 }
 
 impl Default for ASTArena {
@@ -209,6 +340,7 @@ impl ASTArena {
             exprs: vec![Expr::Nil],
             // why this for `exprs`? See the above note on
             // `ExprRef::nil`.
+            pats: vec![Pat::Wildcard],
         }
     }
 
@@ -217,12 +349,25 @@ impl ASTArena {
         ExprId { idx: 0 }
     }
 
+    #[must_use]
+    pub fn pat_wildcard(&self) -> PatId {
+        PatId { idx: 0 }
+    }
+
     /// Add an `Expr` to the arena and return the `ExprId` we can use
     /// to refer to it later
     pub fn add_expr(&mut self, e: Expr) -> ExprId {
         let idx = self.exprs.len();
         self.exprs.push(e);
         ExprId { idx }
+    }
+
+    /// Add a `Pat` to the arena and return the `PatId` we can use to
+    /// refer to it later
+    pub fn add_pat(&mut self, p: Pat) -> PatId {
+        let idx = self.pats.len();
+        self.pats.push(p);
+        PatId { idx }
     }
 
     /// Intern a string and add the `StrRef` we can use to refer to it
@@ -266,8 +411,8 @@ impl ASTArena {
     /// Print a representation of a pattern.
     ///
     /// TODO: convert this to `Printable`
-    fn show_pat(&self, pat: &Pat, f: &mut fmt::Formatter) -> fmt::Result {
-        match pat {
+    fn show_pat(&self, pat: PatRef, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self[pat] {
             Pat::Wildcard => write!(f, "_"),
             Pat::Var(n, b) => write!(f, "{}{}", if *b { "fix " } else { "" }, &self[n.item]),
             Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[n.item]),
@@ -275,7 +420,7 @@ impl ASTArena {
             Pat::Tup(tup, row) => {
                 write!(f, "Tup( ")?;
                 for t in tup {
-                    self.show_pat(t, f)?;
+                    self.show_pat(*t, f)?;
                     write!(f, " ")?;
                 }
                 match row {
@@ -293,7 +438,7 @@ impl ASTArena {
                 write!(f, "Rec(")?;
                 for fld in fields {
                     write!(f, "{}:", &self[fld.name.item])?;
-                    self.show_pat(&fld.pat, f)?;
+                    self.show_pat(fld.pat, f)?;
                     write!(f, " ")?;
                 }
                 match row {
@@ -310,7 +455,7 @@ impl ASTArena {
             Pat::Any(choices) => {
                 write!(f, "Any( ")?;
                 for p in choices {
-                    self.show_pat(p, f)?;
+                    self.show_pat(*p, f)?;
                     write!(f, " ")?;
                 }
                 write!(f, ")")
@@ -427,7 +572,7 @@ impl ASTArena {
                 for case in cases {
                     self.indent(f, depth + 2)?;
                     for pat in &case.pats {
-                        self.show_pat(pat, f)?;
+                        self.show_pat(*pat, f)?;
                         writeln!(f, ", ")?;
                     }
                     writeln!(f, " =>")?;
@@ -444,7 +589,7 @@ impl ASTArena {
                 self.show_expr(&self[*expr], f, depth)?;
                 for case in cases {
                     self.indent(f, depth + 2)?;
-                    self.show_pat(&case.pats[0], f)?;
+                    self.show_pat(case.pats[0], f)?;
                     writeln!(f, " =>")?;
                     self.indent(f, depth + 4)?;
                     self.show_expr(&self[case.expr], f, depth + 4)?;
@@ -499,6 +644,22 @@ impl std::ops::Index<ExprId> for ASTArena {
 
     fn index(&self, rf: ExprId) -> &Self::Output {
         &self.exprs[rf.idx]
+    }
+}
+
+impl std::ops::Index<PatRef> for ASTArena {
+    type Output = Pat;
+
+    fn index(&self, rf: PatRef) -> &Self::Output {
+        &self.pats[rf.item.idx]
+    }
+}
+
+impl std::ops::Index<PatId> for ASTArena {
+    type Output = Pat;
+
+    fn index(&self, rf: PatId) -> &Self::Output {
+        &self.pats[rf.idx]
     }
 }
 
