@@ -214,7 +214,10 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let raw_len = tup.as_tup(&state.ast.borrow(), expr.loc)?.len();
                         match raw_len.try_into() {
                             Ok(n) => Ok(Value::Lit(Literal::Num(n))),
-                            Err(_) => Err(MatzoError::new(expr.loc, "Tuple size too large to represent".to_string())),
+                            Err(_) => Err(MatzoError::new(
+                                expr.loc,
+                                "Tuple size too large to represent".to_string(),
+                            )),
                         }
                     } else {
                         arity_error("tuple/len", 1, exprs)
@@ -345,7 +348,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                             modified.push(item.clone());
                         }
                         modified.push(Thunk::Expr(*new, env.clone()));
-                        for item in tup.iter().skip(idx+1) {
+                        for item in tup.iter().skip(idx + 1) {
                             modified.push(item.clone());
                         }
                         Ok(Value::Tup(modified))

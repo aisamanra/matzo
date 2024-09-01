@@ -66,7 +66,7 @@ impl MatzoError {
                 token: (start, tok, end),
                 expected,
             } => {
-                let span = Span {start, end};
+                let span = Span { start, end };
 
                 let expected = MatzoError::format_expected_list(&expected);
                 MatzoError::new(

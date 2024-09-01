@@ -1,21 +1,10 @@
 use crate::ast::{
-    ASTArena,
-    Binding,
-    Choice,
-    Expr,
-    ExprRef,
-    FileRef,
-    Literal,
-    Name,
-    Pat,
-    RowPat,
-    Stmt,
-    StrRef,
+    ASTArena, Binding, Choice, Expr, ExprRef, FileRef, Literal, Name, Pat, RowPat, Stmt, StrRef,
 };
 use crate::builtins::builtins;
 use crate::core::FileTable;
 use crate::errors::MatzoError;
-use crate::rand::{Randomizer, DefaultRNG, SeededRNG};
+use crate::rand::{DefaultRNG, Randomizer, SeededRNG};
 pub use crate::value::*;
 use crate::{grammar, lexer};
 

@@ -71,7 +71,9 @@ fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
                 rl.add_history_entry(ln.as_str());
                 ln
             }
-            Err(rustyline::error::ReadlineError::Eof | rustyline::error::ReadlineError::Interrupted) => {
+            Err(
+                rustyline::error::ReadlineError::Eof | rustyline::error::ReadlineError::Interrupted,
+            ) => {
                 if let Some(p) = history_file {
                     rl.save_history(&p)?;
                 }
@@ -104,8 +106,7 @@ fn main() {
         State::new()
     };
     for arg in opts.files {
-        let buf =
-            std::fs::read_to_string(&arg).unwrap_or_else(|_| panic!("Unable to read {arg}"));
+        let buf = std::fs::read_to_string(&arg).unwrap_or_else(|_| panic!("Unable to read {arg}"));
         if let Err(err) = state.run(&buf) {
             eprintln!(
                 "{} {}",

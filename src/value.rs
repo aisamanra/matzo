@@ -43,8 +43,11 @@ impl Value {
         match self {
             Value::Lit(Literal::Num(n)) => match (*n).try_into() {
                 Ok(m) => Ok(m),
-                Err(_) => Err(MatzoError::new(loc, format!("Number out of usable range: {n}"))),
-            }
+                Err(_) => Err(MatzoError::new(
+                    loc,
+                    format!("Number out of usable range: {n}"),
+                )),
+            },
             _ => self.with_str(ast, |s| {
                 Err(MatzoError::new(loc, format!("Expected number, got {s}")))
             }),
