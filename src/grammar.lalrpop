@@ -243,7 +243,7 @@ pub Cases: Vec<Case> = {
 };
 
 pub Case: Case = {
-  <pat:Pat> "=>" <expr:Located<Expr>> =>
+  <pat:Located<Pat>> "=>" <expr:Located<Expr>> =>
     Case { pats: vec![pat], expr }
 };
 
@@ -255,56 +255,62 @@ pub FunCases: Vec<Case> = {
 };
 
 pub FunCase: Case = {
-    "[" <mut pats:(<Pat> ",")*> <pat:Pat> "]" "=>" <expr:Located<Expr>> => {
+    "[" <mut pats:(<Located<Pat>> ",")*> <pat:Located<Pat>> "]" "=>" <expr:Located<Expr>> => {
         pats.push(pat);
         Case { pats, expr }
     }
 };
 
-pub Pat: Pat = {
-    "_" => Pat::Wildcard,
-    <Literal> => Pat::Lit(<>),
-    "fix" <Name> => Pat::Var(<>, true),
-    <Name> => Pat::Var(<>, false),
+pub Pat: PatId = {
+    "_" => ast.pat_wildcard(),
+    <Literal> => ast.add_pat(Pat::Lit(<>)),
+    "fix" <Name> => ast.add_pat(Pat::Var(<>, true)),
+    <Name> => ast.add_pat(Pat::Var(<>, false)),
 
-    "(" <mut ps:(<Pat> "|")*> <p:Pat> ")" => {
+    "(" <mut ps:(<Located<Pat>> "|")*> <p:Located<Pat>> ")" => {
       ps.push(p);
-      Pat::Any(ps)
+      ast.add_pat(Pat::Any(ps))
     },
 
-    "<" ">" => Pat::Tup(Vec::new(), RowPat::NoRest),
-    "<" <mut ps:(<Pat> ",")*> <p:Pat> ","? ">" => {
+    "<" ">" => ast.add_pat(Pat::Tup(Vec::new(), RowPat::NoRest)),
+    "<" <mut ps:(<Located<Pat>> ",")*> <p:Located<Pat>> ","? ">" => {
         ps.push(p);
-        Pat::Tup(ps, RowPat::NoRest)
+        ast.add_pat(Pat::Tup(ps, RowPat::NoRest))
     },
-    "<" <ps:(<Pat> ",")*> ".." ","? ">" => {
-        Pat::Tup(ps, RowPat::UnboundRest)
+    "<" <ps:(<Located<Pat>> ",")*> ".." ","? ">" => {
+        ast.add_pat(Pat::Tup(ps, RowPat::UnboundRest))
     },
-    "<" <ps:(<Pat> ",")*> ".." <rest:Name> ","? ">" => {
-        Pat::Tup(ps, RowPat::BoundRest(rest))
+    "<" <ps:(<Located<Pat>> ",")*> ".." <rest:Name> ","? ">" => {
+        ast.add_pat(Pat::Tup(ps, RowPat::BoundRest(rest)))
     },
 
     "{" <mut fs:(<FieldPat> ",")*> <f:FieldPat> ","? "}" => {
         fs.push(f);
-        Pat::Rec(fs, RowPat::NoRest)
+        ast.add_pat(Pat::Rec(fs, RowPat::NoRest))
     },
     "{" <fs:(<FieldPat> ",")*> ".." ","? "}" => {
-        Pat::Rec(fs, RowPat::UnboundRest)
+        ast.add_pat(Pat::Rec(fs, RowPat::UnboundRest))
     },
     "{" <fs:(<FieldPat> ",")*> ".." <rest:Name> ","? "}" => {
-        Pat::Rec(fs, RowPat::BoundRest(rest))
+        ast.add_pat(Pat::Rec(fs, RowPat::BoundRest(rest)))
     },
 };
 
 pub FieldPat: FieldPat = {
-    <name:Name> ":" <pat:Pat> => FieldPat {
+    <name:Name> ":" <pat:Located<Pat>> => FieldPat {
       name, pat
     },
-    <name:Name> ":" => FieldPat {
-      name, pat: Pat::Var(name, false)
+    <name:Name> ":" => {
+      let pat = ast.add_pat(Pat::Var(name, false));
+      FieldPat {
+        name, pat: name.map(|_| pat)
+      }
     },
-    "fix" <name:Name> ":" => FieldPat {
-      name, pat: Pat::Var(name, true)
+    "fix" <name:Name> ":" => {
+      let pat = ast.add_pat(Pat::Var(name, true));
+      FieldPat {
+        name, pat: name.map(|_| pat)
+      }
     }
 };
 
