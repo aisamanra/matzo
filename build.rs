@@ -3,8 +3,8 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-use vergen::*;
-use vergen_git2::*;
+use vergen::Emitter;
+use vergen_git2::Git2Builder;
 
 const TEST_PREFIX: &str = "
 #[cfg(test)]
@@ -81,7 +81,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lalrpop::process_root()?;
 
     for file in ["build.rs", "src/grammar.lalrpop"] {
-        println!("cargo:rerun-if-changed={}", file);
+        println!("cargo:rerun-if-changed={file}");
     }
 
     Emitter::default()
@@ -92,7 +92,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR")?;
     let dest = Path::new(&out_dir).join("exp_tests.rs");
     let mut test_file = File::create(&dest)?;
-    writeln!(test_file, "{}", TEST_PREFIX)?;
+    writeln!(test_file, "{TEST_PREFIX}")?;
 
     for exp in std::fs::read_dir("tests")? {
         let exp = exp?.path().canonicalize()?;
@@ -102,7 +102,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .replace("%FILE%", &fname)
                 .replace("%PREFIX%", prefix)
                 .replace("%ROOT%", &manifest_dir);
-            writeln!(test_file, "{}", test)?;
+            writeln!(test_file, "{test}")?;
         }
     }
 

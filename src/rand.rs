@@ -2,7 +2,7 @@ use rand::{Rng, SeedableRng};
 
 /// This wraps all the operations we care about for our random numbers
 /// in a convenient interfacee
-pub trait MatzoRand {
+pub trait Randomizer {
     fn gen_range_i64(&mut self, min: i64, max: i64) -> i64;
     fn gen_range_usize(&mut self, min: usize, max: usize) -> usize;
 }
@@ -14,6 +14,7 @@ pub struct DefaultRNG {
 }
 
 impl DefaultRNG {
+    #[must_use]
     pub fn new() -> DefaultRNG {
         DefaultRNG {
             rand: rand::thread_rng(),
@@ -27,7 +28,7 @@ impl Default for DefaultRNG {
     }
 }
 
-impl MatzoRand for DefaultRNG {
+impl Randomizer for DefaultRNG {
     fn gen_range_i64(&mut self, min: i64, max: i64) -> i64 {
         self.rand.gen_range(min..max)
     }
@@ -44,6 +45,7 @@ pub struct SeededRNG {
 }
 
 impl SeededRNG {
+    #[must_use]
     pub fn from_seed(seed: u64) -> SeededRNG {
         SeededRNG {
             rand: rand::rngs::StdRng::seed_from_u64(seed),
@@ -51,7 +53,7 @@ impl SeededRNG {
     }
 }
 
-impl MatzoRand for SeededRNG {
+impl Randomizer for SeededRNG {
     fn gen_range_i64(&mut self, min: i64, max: i64) -> i64 {
         self.rand.gen_range(min..max)
     }

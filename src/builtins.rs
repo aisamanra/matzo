@@ -1,7 +1,7 @@
-use crate::ast::*;
+use crate::ast::{ExprRef, Literal, Span};
 use crate::core::Loc;
 use crate::errors::MatzoError;
-use crate::interp::*;
+use crate::interp::{BuiltinFunc, Env, State, Thunk, Value};
 
 fn arity_error(func: &str, expected: usize, actual: &[ExprRef]) -> Result<Value, MatzoError> {
     let msg = format!(
@@ -30,17 +30,19 @@ fn tuple_flatten_helper(
     cb: &mut impl FnMut(Value),
 ) -> Result<(), MatzoError> {
     if let Value::Tup(thunks) = val {
-        for thunk in thunks.iter() {
+        for thunk in &thunks {
             let val = state.hnf(thunk)?;
-            tuple_flatten_helper(state, val, cb)?
+            tuple_flatten_helper(state, val, cb)?;
         }
     } else {
-        cb(val)
+        cb(val);
     }
     Ok(())
 }
 
 /// The list of builtins provided at startup.
+#[allow(clippy::too_many_lines)]
+#[must_use]
 pub fn builtins() -> Vec<BuiltinFunc> {
     vec![
         BuiltinFunc {
@@ -131,7 +133,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                     let mut buf = String::new();
                     let mut capitalized = false;
                     let mut last_char = '\0';
-                    for expr in exprs.iter() {
+                    for expr in exprs {
                         let s = state.eval(*expr, env)?;
                         let s = s.as_str(&state.ast.borrow(), expr.loc)?;
                         if !capitalized && !s.trim().is_empty() {
@@ -144,7 +146,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                                 buf.push(c);
                             }
                         } else if last_char.is_alphanumeric()
-                            && s.chars().next().map_or(false, |c| c.is_alphanumeric())
+                            && s.chars().next().map_or(false, char::is_alphanumeric)
                         {
                             buf.push(' ');
                             buf.push_str(s.trim());
@@ -209,9 +211,14 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     if let [expr] = exprs {
                         let tup = state.eval(*expr, env)?;
-                        Ok(Value::Lit(Literal::Num(
-                            tup.as_tup(&state.ast.borrow(), expr.loc)?.len() as i64,
-                        )))
+                        let raw_len = tup.as_tup(&state.ast.borrow(), expr.loc)?.len();
+                        match raw_len.try_into() {
+                            Ok(n) => Ok(Value::Lit(Literal::Num(n))),
+                            Err(_) => Err(MatzoError::new(
+                                expr.loc,
+                                "Tuple size too large to represent".to_string(),
+                            )),
+                        }
                     } else {
                         arity_error("tuple/len", 1, exprs)
                     }
@@ -243,7 +250,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
             callback: Box::new(
                 |state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
                     let mut contents = Vec::new();
-                    for expr in exprs.iter() {
+                    for expr in exprs {
                         let val = state.eval(*expr, env)?;
                         tuple_flatten_helper(state, val, &mut |v| {
                             contents.push(Thunk::Value(v));
@@ -298,7 +305,7 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let idx = state.eval(*idx_e, env)?;
                         state.hnf(
                             &tup.as_tup(&state.ast.borrow(), tup_e.loc)?
-                                [idx.as_num(&state.ast.borrow(), idx_e.loc)? as usize],
+                                [idx.as_usize(&state.ast.borrow(), idx_e.loc)?],
                         )
                     } else {
                         arity_error("tuple/index", 1, exprs)
@@ -334,15 +341,15 @@ pub fn builtins() -> Vec<BuiltinFunc> {
                         let tup = tup_val.as_tup(&state.ast.borrow(), tup.loc)?;
                         let idx = state
                             .eval(*idx, env)?
-                            .as_num(&state.ast.borrow(), idx.loc)?;
+                            .as_usize(&state.ast.borrow(), idx.loc)?;
 
                         let mut modified = Vec::with_capacity(tup.len());
-                        for i in 0..idx {
-                            modified.push(tup[i as usize].clone());
+                        for item in tup.iter().take(idx) {
+                            modified.push(item.clone());
                         }
                         modified.push(Thunk::Expr(*new, env.clone()));
-                        for i in (idx + 1)..(tup.len() as i64) {
-                            modified.push(tup[i as usize].clone());
+                        for item in tup.iter().skip(idx + 1) {
+                            modified.push(item.clone());
                         }
                         Ok(Value::Tup(modified))
                     } else {

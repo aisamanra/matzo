@@ -86,8 +86,6 @@ impl Hinter for Repl {
                     return known
                         .strip_prefix(so_far)
                         .map(|s| ansi_term::Colour::Blue.dimmed().paint(s).to_string());
-                } else {
-                    return None;
                 }
             }
         }

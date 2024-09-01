@@ -35,7 +35,7 @@ impl Opts {
         let seed = matches.value_of("seed").map(|s| s.parse().unwrap());
         let mut files = Vec::new();
         if let Some(fs) = matches.values_of("input") {
-            files.extend(fs.map(|x| x.to_string()));
+            files.extend(fs.map(std::string::ToString::to_string));
         }
         Opts { seed, files }
     }
@@ -71,8 +71,9 @@ fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
                 rl.add_history_entry(ln.as_str());
                 ln
             }
-            Err(rustyline::error::ReadlineError::Eof)
-            | Err(rustyline::error::ReadlineError::Interrupted) => {
+            Err(
+                rustyline::error::ReadlineError::Eof | rustyline::error::ReadlineError::Interrupted,
+            ) => {
                 if let Some(p) = history_file {
                     rl.save_history(&p)?;
                 }
@@ -85,7 +86,7 @@ fn run_repl(seed: Option<u64>) -> Result<(), Box<dyn std::error::Error>> {
             eprintln!(
                 "{} {}",
                 ansi_term::Colour::Red.bold().paint("error:"),
-                ansi_term::Colour::Red.paint(format!("{}", err)),
+                ansi_term::Colour::Red.paint(format!("{err}")),
             );
         }
     }
@@ -105,13 +106,12 @@ fn main() {
         State::new()
     };
     for arg in opts.files {
-        let buf =
-            std::fs::read_to_string(&arg).unwrap_or_else(|_| panic!("Unable to read {}", arg));
+        let buf = std::fs::read_to_string(&arg).unwrap_or_else(|_| panic!("Unable to read {arg}"));
         if let Err(err) = state.run(&buf) {
             eprintln!(
                 "{} {}",
                 ansi_term::Colour::Red.bold().paint("error:"),
-                ansi_term::Colour::Red.paint(format!("{}", err)),
+                ansi_term::Colour::Red.paint(format!("{err}")),
             );
         }
     }

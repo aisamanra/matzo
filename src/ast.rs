@@ -23,6 +23,7 @@ pub enum Stmt {
 }
 
 impl Stmt {
+    #[must_use]
     pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Printable<'a, Stmt> {
         Printable {
             arena: ast,
@@ -100,6 +101,7 @@ pub struct ExprId {
 impl ExprId {
     /// We pre-initialize the `ASTArena` with a `nil` value, so all
     /// nil values can point to that.
+    #[must_use]
     pub fn nil(&self) -> bool {
         self.idx == 0
     }
@@ -159,6 +161,7 @@ pub struct Choice {
 
 impl Choice {
     /// Fetch a weight from a `Choice`, defaulting to 1
+    #[must_use]
     pub fn weight(&self) -> i64 {
         self.weight.unwrap_or(1)
     }
@@ -199,6 +202,7 @@ impl Default for ASTArena {
 }
 
 impl ASTArena {
+    #[must_use]
     pub fn new() -> ASTArena {
         ASTArena {
             strings: string_interner::StringInterner::new(),
@@ -208,6 +212,7 @@ impl ASTArena {
         }
     }
 
+    #[must_use]
     pub fn expr_nil(&self) -> ExprId {
         ExprId { idx: 0 }
     }
@@ -250,6 +255,7 @@ impl ASTArena {
 
     /// A helper function for printing, write `depth` spaces to the
     /// formatter.
+    #[allow(clippy::unused_self)]
     fn indent(&self, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
         for _ in 0..depth {
             write!(f, " ")?;
@@ -265,7 +271,7 @@ impl ASTArena {
             Pat::Wildcard => write!(f, "_"),
             Pat::Var(n, b) => write!(f, "{}{}", if *b { "fix " } else { "" }, &self[n.item]),
             Pat::Lit(Literal::Atom(n)) => write!(f, "{}", &self[n.item]),
-            Pat::Lit(lit) => write!(f, "{:?}", lit),
+            Pat::Lit(lit) => write!(f, "{lit:?}"),
             Pat::Tup(tup, row) => {
                 write!(f, "Tup( ")?;
                 for t in tup {
@@ -315,12 +321,13 @@ impl ASTArena {
     /// Print a representation of an expression.
     ///
     /// TODO: convert this to `Printable`
+    #[allow(clippy::too_many_lines)]
     fn show_expr(&self, expr: &Expr, f: &mut fmt::Formatter, depth: usize) -> fmt::Result {
         match expr {
             Expr::Nil => writeln!(f, "Nil"),
             Expr::Var(v) => writeln!(f, "Var({})", &self[v.item]),
             Expr::Lit(Literal::Atom(n)) => writeln!(f, "Lit(Atom({}))", &self[n.item]),
-            Expr::Lit(lit) => writeln!(f, "{:?}", lit),
+            Expr::Lit(lit) => writeln!(f, "{lit:?}"),
             Expr::Range(from, to) => {
                 writeln!(f, "Range(")?;
                 self.indent(f, depth + 2)?;
@@ -385,7 +392,7 @@ impl ASTArena {
                 for e in expr {
                     if let Some(s) = e.weight {
                         self.indent(f, depth + 2)?;
-                        writeln!(f, "{}:", s)?;
+                        writeln!(f, "{s}:")?;
                         self.indent(f, depth + 4)?;
                         self.show_expr(&self[e.value], f, depth + 4)?;
                     } else {
@@ -419,7 +426,7 @@ impl ASTArena {
                 writeln!(f, "Fun(")?;
                 for case in cases {
                     self.indent(f, depth + 2)?;
-                    for pat in case.pats.iter() {
+                    for pat in &case.pats {
                         self.show_pat(pat, f)?;
                         writeln!(f, ", ")?;
                     }
