@@ -315,7 +315,7 @@ impl<'a> MatzoLexer<'a> {
 }
 
 impl<'a> Iterator for MatzoLexer<'a> {
-    type Item = Result<(Wrap<'a>, logos::Span), GenericLexerError>;
+    type Item = Result<(Wrap<'a>, logos::Span), (Span, GenericLexerError)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.mode {
@@ -333,7 +333,16 @@ impl<'a> Iterator for MatzoLexer<'a> {
                     self.mode = WrappedLexer::FString(inner.to_owned().morph());
                 }
                 // Return the wrapped token and the span
-                result.map(|r| r.map(|tok| (Wrap::R(tok), span)))
+                result.map(|r| match r {
+                    Ok(tok) => Ok((Wrap::R(tok), span)),
+                    Err(e) => Err((
+                        Span {
+                            start: span.start,
+                            end: span.end,
+                        },
+                        e,
+                    )),
+                })
             }
 
             // OTOH, if we're in the fstring parsing mode...
@@ -347,7 +356,16 @@ impl<'a> Iterator for MatzoLexer<'a> {
                     self.mode = WrappedLexer::Regular(inner.to_owned().morph());
                 }
                 // Return the wrapped token and span
-                result.map(|r| r.map(|tok| (Wrap::F(tok), span)))
+                result.map(|r| match r {
+                    Ok(tok) => Ok((Wrap::F(tok), span)),
+                    Err(e) => Err((
+                        Span {
+                            start: span.start,
+                            end: span.end,
+                        },
+                        e,
+                    )),
+                })
             }
         }
     }
@@ -368,12 +386,7 @@ pub type Spanned<Tok, Loc, Error> = Result<(Loc, Tok, Loc), Error>;
 
 pub fn tokens(source: &str) -> impl Iterator<Item = Spanned<Wrap<'_>, usize, LexerError>> {
     MatzoLexer::lex(source).map(move |elem| match elem {
-        Err(_err) => Err(LexerError {
-            range: Span {
-                start: 0, // range.start as u32,
-                end: 0,   // range.end as u32,
-            },
-        }),
+        Err((range, _err)) => Err(LexerError { range }),
         Ok((token, range)) => Ok((range.start, token, range.end)),
     })
 }
@@ -414,6 +427,6 @@ mod test {
         for e in expected {
             assert_eq!(lex.next().map(|r| r.unwrap().0), Some(e));
         }
-        assert_eq!(lex.next(), None);
+        assert!(lex.next().is_none());
     }
 }
