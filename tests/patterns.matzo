@@ -16,3 +16,7 @@ f := fn {[<x,y,z>] => x};
 (* fixed variables *)
 f := fn {[fix x] => x x};
 f := fn {[<fix x, y>] => x x y y};
+
+(* or-patterns *)
+f := fn {[1 | 2 | 3] => x x};
+f := fn {[1 | (2 | 3)] => x x y y};

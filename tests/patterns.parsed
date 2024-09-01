@@ -72,3 +72,23 @@ Assn  f Fun(
     )
 )
 
+Assn  f Fun(
+  Any( Num(1) Num(2) Num(3) ), 
+ =>
+    Cat(
+      Var(x)
+      Var(x)
+    )
+)
+
+Assn  f Fun(
+  Any( Num(1) Any( Num(2) Num(3) ) ), 
+ =>
+    Cat(
+      Var(x)
+      Var(x)
+      Var(y)
+      Var(y)
+    )
+)
+
