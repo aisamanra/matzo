@@ -427,6 +427,6 @@ mod test {
         for e in expected {
             assert_eq!(lex.next().map(|r| r.unwrap().0), Some(e));
         }
-        assert_eq!(lex.next(), None);
+        assert!(lex.next().is_none());
     }
 }
