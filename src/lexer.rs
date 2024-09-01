@@ -309,7 +309,7 @@ impl<'a> MatzoLexer<'a> {
     /// Return an iterator over the provided source.
     pub fn lex(src: &'a str) -> MatzoLexer<'a> {
         MatzoLexer {
-            mode: WrappedLexer::Regular(Token::lexer(src))
+            mode: WrappedLexer::Regular(Token::lexer(src)),
         }
     }
 }
@@ -335,7 +335,13 @@ impl<'a> Iterator for MatzoLexer<'a> {
                 // Return the wrapped token and the span
                 result.map(|r| match r {
                     Ok(tok) => Ok((Wrap::R(tok), span)),
-                    Err(e) => Err((Span { start: span.start, end: span.end }, e)),
+                    Err(e) => Err((
+                        Span {
+                            start: span.start,
+                            end: span.end,
+                        },
+                        e,
+                    )),
                 })
             }
 
@@ -352,7 +358,13 @@ impl<'a> Iterator for MatzoLexer<'a> {
                 // Return the wrapped token and span
                 result.map(|r| match r {
                     Ok(tok) => Ok((Wrap::F(tok), span)),
-                    Err(e) => Err((Span { start: span.start, end: span.end }, e)),
+                    Err(e) => Err((
+                        Span {
+                            start: span.start,
+                            end: span.end,
+                        },
+                        e,
+                    )),
                 })
             }
         }
