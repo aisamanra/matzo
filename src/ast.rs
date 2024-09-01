@@ -1,6 +1,8 @@
 pub use crate::lexer::{FileRef, Located, Span};
 use std::fmt;
 
+use std::collections::BTreeSet;
+
 // There are two big parts to this file: firstly, there are the
 // representations of the relevant data structures, and then there's
 // the `ASTArena` that contains them.
@@ -149,6 +151,86 @@ pub enum RowPat {
     UnboundRest,
     /// Bind the record modulo the matched fields to a new name
     BoundRest(Name),
+}
+
+impl RowPat {
+    fn add_bound_variables(&self, vec: &mut BTreeSet<StrRef>) {
+        match self {
+            RowPat::NoRest | RowPat::UnboundRest => (),
+            RowPat::BoundRest(n) => {
+                vec.insert(n.item);
+            }
+        }
+    }
+}
+
+/// Represents a problem with a pattern
+#[derive(Debug)]
+pub struct InvalidPattern {
+    pub inconsistent_variables: BTreeSet<StrRef>,
+}
+
+impl Pat {
+    /// This returns `None` if there are no problems, and
+    /// `Some(pattern_issue)` if there's an issue
+    #[must_use]
+    pub fn ensure_valid(&self) -> Option<InvalidPattern> {
+        let mut inconsistent_variables = BTreeSet::new();
+        self.bound_variables(&mut inconsistent_variables);
+        if inconsistent_variables.is_empty() {
+            None
+        } else {
+            Some(InvalidPattern {
+                inconsistent_variables,
+            })
+        }
+    }
+
+    fn bound_variables(&self, problems: &mut BTreeSet<StrRef>) -> BTreeSet<StrRef> {
+        match self {
+            Pat::Var(n, _) => {
+                let mut hs = BTreeSet::new();
+                hs.insert(n.item);
+                hs
+            }
+            Pat::Wildcard | Pat::Lit(_) => BTreeSet::new(),
+            Pat::Tup(pats, row) => {
+                let mut list = pats
+                    .iter()
+                    .flat_map(|p| p.bound_variables(problems))
+                    .collect();
+                row.add_bound_variables(&mut list);
+                list
+            }
+            Pat::Rec(fields, row) => {
+                let mut list = fields
+                    .iter()
+                    .flat_map(|f| f.pat.bound_variables(problems))
+                    .collect();
+                row.add_bound_variables(&mut list);
+                list
+            }
+            Pat::Any(pats) => {
+                let mut all: Vec<_> = pats.iter().map(|p| p.bound_variables(problems)).collect();
+                let Some(head) = all.pop() else {
+                    return BTreeSet::new();
+                };
+
+                for entry in all.iter() {
+                    if &head != entry {
+                        for i in entry.difference(&head) {
+                            problems.insert(*i);
+                        }
+                        for i in head.difference(entry) {
+                            problems.insert(*i);
+                        }
+                    }
+                }
+
+                head
+            }
+        }
+    }
 }
 
 /// A single element in a choice, with an optional weight (which
