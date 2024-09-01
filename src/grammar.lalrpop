@@ -262,15 +262,24 @@ pub FunCase: Case = {
 };
 
 pub Pat: PatId = {
+    <mut ps:(<Located<Pat2>> "|")*> <p:Located<Pat2>> => {
+      if ps.is_empty() {
+        p.item
+      } else {
+        ps.push(p);
+        ast.add_pat(Pat::Any(ps))
+      }
+    },
+
+};
+
+pub Pat2: PatId = {
     "_" => ast.pat_wildcard(),
     <Literal> => ast.add_pat(Pat::Lit(<>)),
     "fix" <Name> => ast.add_pat(Pat::Var(<>, true)),
     <Name> => ast.add_pat(Pat::Var(<>, false)),
 
-    "(" <mut ps:(<Located<Pat>> "|")*> <p:Located<Pat>> ")" => {
-      ps.push(p);
-      ast.add_pat(Pat::Any(ps))
-    },
+    "(" <Pat> ")" => <>,
 
     "<" ">" => ast.add_pat(Pat::Tup(Vec::new(), RowPat::NoRest)),
     "<" <mut ps:(<Located<Pat>> ",")*> <p:Located<Pat>> ","? ">" => {
