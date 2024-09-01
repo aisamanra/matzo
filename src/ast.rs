@@ -183,6 +183,38 @@ pub struct InvalidPattern {
     pub inconsistent_variables: BTreeSet<StrRef>,
 }
 
+impl InvalidPattern {
+    #[must_use]
+    pub fn show<'a>(&'a self, ast: &'a ASTArena) -> Printable<'a, InvalidPattern> {
+        Printable {
+            arena: ast,
+            value: self,
+        }
+    }
+}
+
+impl<'a> fmt::Display for Printable<'a, InvalidPattern> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let vars = self.value.inconsistent_variables.len();
+        if vars == 1 {
+            let head = &self.arena[*self.value.inconsistent_variables.first().unwrap()];
+            write!(f, "The variable {head} was not defined in all branches")
+        } else {
+            write!(
+                f,
+                "The following variables were not defined in all branches: "
+            )?;
+            for (i, v) in self.value.inconsistent_variables.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", &self.arena[*v])?;
+            }
+            Ok(())
+        }
+    }
+}
+
 impl Pat {
     /// This returns `None` if there are no problems, and
     /// `Some(pattern_issue)` if there's an issue
@@ -232,7 +264,7 @@ impl Pat {
                     return BTreeSet::new();
                 };
 
-                for entry in all.iter() {
+                for entry in &all {
                     if &head != entry {
                         for i in entry.difference(&head) {
                             problems.insert(*i);

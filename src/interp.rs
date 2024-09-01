@@ -664,6 +664,7 @@ impl State {
     /// `Ok(true)`, then those are the thunks that should be bound to
     /// names in the context, but otherwise those bindings can be
     /// safely ignored.
+    #[allow(clippy::too_many_lines)]
     fn match_pat(
         &self,
         pat_ref: PatRef,
@@ -671,6 +672,14 @@ impl State {
         bindings: &mut Vec<(Name, Thunk)>,
     ) -> Result<bool, MatzoError> {
         let pat = &self.ast.borrow()[pat_ref];
+
+        if let Some(problem) = pat.ensure_valid(&self.ast.borrow()) {
+            return Err(MatzoError::new(
+                pat_ref.loc,
+                format!("Invalid or-pattern: {}", problem.show(&self.ast.borrow())),
+            ));
+        }
+
         if let Pat::Var(v, fixed) = pat {
             if *fixed {
                 let val = self.hnf(scrut)?;
