@@ -198,7 +198,7 @@ pub Field: Field = {
 };
 
 pub Bindings: Vec<Binding> = {
-  <mut bs:(<Binding> ";")*> <b:Binding> => {
+  <mut bs:(<Binding> ";")*> <b:Binding> ";"? => {
     bs.push(b);
     bs
   },
@@ -236,7 +236,7 @@ pub SimpleDisjunction: ExprId = {
 };
 
 pub Cases: Vec<Case> = {
-  <mut cs:(<Case> ";")*> <c:Case> => {
+  <mut cs:(<Case> ";")*> <c:Case> ";"? => {
     cs.push(c);
     cs
   }

@@ -1,0 +1,28 @@
+(* testing to make sure trailing commas are allowed *)
+
+(* in function cases *)
+
+fn if {
+  [True, x, _] => x;
+  [False, _, y] => y;
+};
+
+(* in case expressions and let expressions *)
+puts let
+  choice := Rock | Paper | Scissors;
+in {
+  case <choice, choice> in {
+    <Rock, Rock> | <Paper, Paper> | <Scissors, Scissors> =>
+      "A tie!";
+    <Rock, Scissors> | <Scissors, Paper> | <Paper, Rock> =>
+      "A win!";
+    _ => "A loss!";
+  }
+};
+
+(* in records *)
+puts {
+  first: One,
+  second: Two,
+  third: Three,
+};

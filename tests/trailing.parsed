@@ -1,0 +1,43 @@
+Assn fixed if Fun(
+  True, 
+x, 
+_, 
+ =>
+    Var(x)
+  False, 
+_, 
+y, 
+ =>
+    Var(y)
+)
+
+Puts Let(
+  choice :=
+Chc(
+    Lit(Atom(Rock))
+    Lit(Atom(Paper))
+    Lit(Atom(Scissors))
+  )
+  Case(
+  Tup(
+    Var(choice)
+    Var(choice)
+  )
+    Any( Tup( Rock Rock ) Tup( Paper Paper ) Tup( Scissors Scissors ) ) =>
+      Str("A tie!")
+    Any( Tup( Rock Scissors ) Tup( Scissors Paper ) Tup( Paper Rock ) ) =>
+      Str("A win!")
+    _ =>
+      Str("A loss!")
+  )
+)
+
+Puts Record(
+  first:
+  Lit(Atom(One))
+  second:
+  Lit(Atom(Two))
+  third:
+  Lit(Atom(Three))
+)
+
