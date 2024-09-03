@@ -380,30 +380,27 @@ const TUPLE_MAP: BuiltinFunc = BuiltinFunc {
 };
 
 /// The list of builtins provided at startup.
-#[must_use]
-pub fn builtins() -> Vec<BuiltinFunc> {
-    vec![
-        REP,
-        // string functions
-        STR_UPPER,
-        STR_CAPITALIZE,
-        STR_LOWER,
-        // smart string-builders
-        WD,
-        SE,
-        // arithmetic functions
-        ADD,
-        SUB,
-        MUL,
-        // tuple functions
-        TUPLE_LEN,
-        TUPLE_CONCAT,
-        TUPLE_FLATTEN,
-        TUPLE_JOIN,
-        TUPLE_INDEX,
-        TUPLE_REP,
-        TUPLE_REPLACE,
-        TUPLE_FOLD,
-        TUPLE_MAP,
-    ]
-}
+pub const BUILTINS: &'static [BuiltinFunc] = &[
+    REP,
+    // string functions
+    STR_UPPER,
+    STR_CAPITALIZE,
+    STR_LOWER,
+    // smart string-builders
+    WD,
+    SE,
+    // arithmetic functions
+    ADD,
+    SUB,
+    MUL,
+    // tuple functions
+    TUPLE_LEN,
+    TUPLE_CONCAT,
+    TUPLE_FLATTEN,
+    TUPLE_JOIN,
+    TUPLE_INDEX,
+    TUPLE_REP,
+    TUPLE_REPLACE,
+    TUPLE_FOLD,
+    TUPLE_MAP,
+];
