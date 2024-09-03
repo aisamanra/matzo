@@ -21,7 +21,7 @@ use unicode_normalization::UnicodeNormalization;
 /// the state and the env along with a (non-empty) list of
 /// arguments. (We don't even parse empty argument lists right now,
 /// although that's subject to change.)
-type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>>;
+type Callback = &'static dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>;
 
 /// A representation of a builtin function implemented in Rust. This
 /// will be inserted into the global scope under the name provided as
