@@ -13,11 +13,7 @@ pub const REP: BuiltinFunc = BuiltinFunc {
                 .eval(*rep, env)?
                 .as_num(&state.ast.borrow(), rep.loc)?;
             for _ in 0..num {
-                buf.push_str(
-                    state
-                        .eval(*expr, env)?
-                        .as_str(&state.ast.borrow(), expr.loc)?,
-                );
+                buf.push_str(&state.force_to_string(*expr, env)?);
             }
             Ok(Value::Lit(Literal::Str(buf)))
         } else {
@@ -30,10 +26,8 @@ pub const STR_UPPER: BuiltinFunc = BuiltinFunc {
     name: "str/upper",
     callback: &|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
         if let [expr] = exprs {
-            let s = state.eval(*expr, env)?;
-            Ok(Value::Lit(Literal::Str(
-                s.as_str(&state.ast.borrow(), expr.loc)?.to_uppercase(),
-            )))
+            let s = state.force_to_string(*expr, env)?;
+            Ok(Value::Lit(Literal::Str(s.to_uppercase())))
         } else {
             arity_error("str/upper", 1, exprs)
         }
@@ -44,10 +38,8 @@ pub const STR_CAPITALIZE: BuiltinFunc = BuiltinFunc {
     name: "str/capitalize",
     callback: &|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
         if let [expr] = exprs {
-            let s = state.eval(*expr, env)?;
-            Ok(Value::Lit(Literal::Str(titlecase::titlecase(
-                s.as_str(&state.ast.borrow(), expr.loc)?,
-            ))))
+            let s = state.force_to_string(*expr, env)?;
+            Ok(Value::Lit(Literal::Str(titlecase::titlecase(&s))))
         } else {
             arity_error("str/capitalize", 1, exprs)
         }
@@ -58,10 +50,8 @@ pub const STR_LOWER: BuiltinFunc = BuiltinFunc {
     name: "str/lower",
     callback: &|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
         if let [expr] = exprs {
-            let s = state.eval(*expr, env)?;
-            Ok(Value::Lit(Literal::Str(
-                s.as_str(&state.ast.borrow(), expr.loc)?.to_lowercase(),
-            )))
+            let s = state.force_to_string(*expr, env)?;
+            Ok(Value::Lit(Literal::Str(s.to_lowercase())))
         } else {
             arity_error("str/lower", 1, exprs)
         }
@@ -73,8 +63,8 @@ pub const WD: BuiltinFunc = BuiltinFunc {
     callback: &|state: &State, exprs: &[ExprRef], env: &Env| -> Result<Value, MatzoError> {
         let mut buf = String::new();
         for expr in exprs {
-            let s = state.eval(*expr, env)?;
-            buf.push_str(s.as_str(&state.ast.borrow(), expr.loc)?);
+            let s = state.force_to_string(*expr, env)?;
+            buf.push_str(&s);
         }
         Ok(Value::Lit(Literal::Str(buf)))
     },
@@ -87,8 +77,7 @@ pub const SE: BuiltinFunc = BuiltinFunc {
         let mut capitalized = false;
         let mut last_char = '\0';
         for expr in exprs {
-            let s = state.eval(*expr, env)?;
-            let s = s.as_str(&state.ast.borrow(), expr.loc)?;
+            let s = state.force_to_string(*expr, env)?;
             if !capitalized && !s.trim().is_empty() {
                 capitalized = true;
                 let mut chars = s.chars();

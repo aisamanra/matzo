@@ -80,10 +80,7 @@ pub const TUPLE_JOIN: BuiltinFunc = BuiltinFunc {
         }
 
         let joiner = if let Some(join_e) = exprs.get(1) {
-            state
-                .eval(*join_e, env)?
-                .as_str(&state.ast.borrow(), join_e.loc)?
-                .to_string()
+            state.force_to_string(*join_e, env)?
         } else {
             String::new()
         };
@@ -101,7 +98,8 @@ pub const TUPLE_JOIN: BuiltinFunc = BuiltinFunc {
                 buf.push_str(&joiner);
             }
             let elem = state.hnf(elem)?;
-            buf.push_str(elem.as_str(&state.ast.borrow(), tup_e.loc)?);
+            let elem = state.force(elem)?;
+            buf.push_str(&elem.to_string(&state.ast.borrow()));
         }
         Ok(Value::Lit(Literal::Str(buf)))
     },
