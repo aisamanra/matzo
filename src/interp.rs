@@ -303,8 +303,9 @@ impl State {
     }
 
     /// Given a value, force it recursively (i.e. all the way to head
-    /// normal form.) This really only affects tuples recursively.
-    fn force(&self, val: Value) -> Result<Value, MatzoError> {
+    /// normal form.) This really only affects tuples and records
+    /// recursively.
+    pub fn force(&self, val: Value) -> Result<Value, MatzoError> {
         match val {
             Value::Tup(values) => Ok(Value::Tup(
                 values
@@ -340,6 +341,12 @@ impl State {
             Thunk::Value(val) => Ok(val.clone()),
             Thunk::Builtin(b) => Ok(Value::Builtin(*b)),
         }
+    }
+
+    pub fn force_to_string(&self, expr: ExprRef, env: &Env) -> Result<String, MatzoError> {
+        let val = self.eval(expr, env)?;
+        let val = self.force(val)?;
+        Ok(val.to_string(&self.ast.borrow()))
     }
 
     /// Given an `ExprRef` and an environment, fetch that expression
