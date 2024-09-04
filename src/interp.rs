@@ -2,7 +2,7 @@ use crate::ast::{
     ASTArena, Binding, Choice, Expr, ExprRef, FileRef, Literal, Name, Pat, PatRef, RowPat, Stmt,
     StrRef,
 };
-use crate::builtins::builtins;
+use crate::builtins::BUILTINS;
 use crate::core::FileTable;
 use crate::errors::MatzoError;
 use crate::rand::{DefaultRNG, Randomizer, SeededRNG};
@@ -21,7 +21,7 @@ use unicode_normalization::UnicodeNormalization;
 /// the state and the env along with a (non-empty) list of
 /// arguments. (We don't even parse empty argument lists right now,
 /// although that's subject to change.)
-type Callback = Box<dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>>;
+type Callback = &'static dyn Fn(&State, &[ExprRef], &Env) -> Result<Value, MatzoError>;
 
 /// A representation of a builtin function implemented in Rust. This
 /// will be inserted into the global scope under the name provided as
@@ -58,7 +58,7 @@ pub struct State {
     /// The file table which contains the raw sources
     pub file_table: RefCell<FileTable>,
     /// The set of builtin (i.e. implemented-in-Rust) functions
-    builtins: Vec<BuiltinFunc>,
+    builtins: Vec<&'static BuiltinFunc>,
     /// The thread-local RNG.
     rand: RefCell<Box<dyn Randomizer>>,
     /// The instantiated parser used to parse Matzo programs
@@ -86,7 +86,7 @@ impl State {
             ast: RefCell::new(ASTArena::new()),
             builtins: Vec::new(),
         };
-        for builtin in builtins() {
+        for builtin in BUILTINS {
             let idx = s.builtins.len();
             let sym = s.ast.borrow_mut().add_string(builtin.name);
             s.root_scope.borrow_mut().insert(
