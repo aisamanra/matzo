@@ -65,7 +65,7 @@ fn parse_escapes(src: &str) -> Result<String, StringLitError> {
                     let b = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
                     let c = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
                     let d = as_hex(src.next().ok_or(StringLitError::NotEnoughHexDigits)?)?;
-                    let res = a << 12 | b << 8 | c << 4 | d;
+                    let res = (a << 12) | (b << 8) | (c << 4) | d;
                     buf.push(char::from_u32(res).ok_or(StringLitError::NotAValidChar(res))?);
                 }
                 Some(c) => buf.push(c),
@@ -202,7 +202,7 @@ pub enum Token<'a> {
     FStringStart,
 }
 
-impl<'a> Token<'a> {
+impl Token<'_> {
     #[must_use]
     pub fn token_name(&self) -> String {
         match self {
@@ -262,7 +262,7 @@ pub enum FStringToken<'a> {
     Var(&'a str),
 }
 
-impl<'a> FStringToken<'a> {
+impl FStringToken<'_> {
     #[must_use]
     fn token_name(&self) -> String {
         match self {
@@ -281,7 +281,7 @@ pub enum Wrap<'a> {
     F(FStringToken<'a>),
 }
 
-impl<'a> Wrap<'a> {
+impl Wrap<'_> {
     #[must_use]
     pub fn token_name(&self) -> String {
         match self {

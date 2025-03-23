@@ -88,7 +88,7 @@ pub const SE: BuiltinFunc = BuiltinFunc {
                     buf.push(c);
                 }
             } else if last_char.is_alphanumeric()
-                && s.chars().next().map_or(false, char::is_alphanumeric)
+                && s.chars().next().is_some_and(char::is_alphanumeric)
             {
                 buf.push(' ');
                 buf.push_str(s.trim());
