@@ -193,7 +193,7 @@ impl InvalidPattern {
     }
 }
 
-impl<'a> fmt::Display for Printable<'a, InvalidPattern> {
+impl fmt::Display for Printable<'_, InvalidPattern> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let vars = self.value.inconsistent_variables.len();
         if vars == 1 {
@@ -671,13 +671,13 @@ pub struct Printable<'a, T> {
     value: &'a T,
 }
 
-impl<'a> std::fmt::Debug for Printable<'a, Stmt> {
+impl std::fmt::Debug for Printable<'_, Stmt> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.arena.show_stmt(self.value, f)
     }
 }
 
-impl<'a> std::fmt::Debug for Printable<'a, Expr> {
+impl std::fmt::Debug for Printable<'_, Expr> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.arena.show_expr(self.value, f, 0)
     }
