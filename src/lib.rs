@@ -12,7 +12,6 @@ pub mod errors;
 pub mod interp;
 pub mod lexer;
 pub mod rand;
-#[cfg(unix)]
 pub mod repl;
 pub mod value;
 

@@ -110,7 +110,7 @@ fn parse_fragment<'a>(lex: &mut Lexer<'a, FStringToken<'a>>) -> Result<String, S
 }
 
 #[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[ \t\n\f]+")]
+#[logos(skip r"[ \t\n\f\r]+")]
 #[logos(skip r"\(\*([^*]|\*[^)])*\*\)")]
 #[logos(error = GenericLexerError)]
 pub enum Token<'a> {
